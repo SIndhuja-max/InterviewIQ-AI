@@ -26,7 +26,7 @@ const Feedback = ({ params }) => {
 
   const router = useRouter();
 
-  uuseEffect(() => {
+  useEffect(() => {
 
   if (
     params?.interviewId &&
