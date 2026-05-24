@@ -1,75 +1,239 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import React, {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  Button,
+} from "@/components/ui/button";
+
 import Image from "next/image";
+
 import Webcam from "react-webcam";
-import useSpeechToText from "react-hook-speech-to-text";
-import { Mic, StopCircle } from "lucide-react";
-import { toast } from "sonner";
-import OpenRouterModel from "@/utils/OpenRouterAiModel";
-import { useUser } from "@clerk/nextjs";
-import { db } from "@/utils/db";
-import { UserAnswer } from "@/utils/schema";
+
+import useSpeechToText
+from "react-hook-speech-to-text";
+
+import {
+  Mic,
+  StopCircle,
+} from "lucide-react";
+
+import { toast }
+from "sonner";
+
+import OpenRouterModel
+from "@/utils/OpenRouterAiModel";
+
+import { useUser }
+from "@clerk/nextjs";
+
+import { db }
+from "@/utils/db";
+
+import { UserAnswer }
+from "@/utils/schema";
 
 const RecordAnswerSection = ({
   mockInterviewQuestion,
   activeQuestionIndex,
   interviewData,
 }) => {
-  const { user } = useUser();
 
-  const [userAnswer, setUserAnswer] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { user } =
+    useUser();
+
+  const [
+    userAnswer,
+    setUserAnswer,
+  ] = useState("");
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
 
   const {
+
     error,
+
     isRecording,
+
     results,
+
     startSpeechToText,
+
     stopSpeechToText,
+
     setResults,
+
   } = useSpeechToText({
+
     continuous: true,
+
     useLegacyResults: false,
+
+    speechRecognitionProperties: {
+
+      interimResults: true,
+    },
   });
 
-  useEffect(() => {
-    if (results.length > 0) {
-      const transcript = results
-        .map((result) => result.transcript)
-        .join(" ");
+  // =========================
+  // SPEECH TO TEXT
+  // =========================
 
-      setUserAnswer(transcript);
+  useEffect(() => {
+
+    if (results.length > 0) {
+
+      const transcript =
+        results
+          .map(
+            (result) =>
+              result.transcript
+          )
+          .join(" ");
+
+      setUserAnswer(
+        transcript
+      );
     }
+
   }, [results]);
 
-  const StartStopRecording = async () => {
-    if (isRecording) {
-      stopSpeechToText();
+  // =========================
+  // AUTO RESTART RECORDING
+  // =========================
 
-      if (userAnswer.length < 10) {
-        toast("Please record a longer answer");
-        return;
-      }
+  useEffect(() => {
 
-      await GenerateFeedback();
-    } else {
-      setUserAnswer("");
-      setResults([]);
+    if (
+      !isRecording &&
+      loading === false &&
+      userAnswer.length > 0
+    ) {
+
       startSpeechToText();
     }
-  };
 
-  const GenerateFeedback = async () => {
-    try {
-      setLoading(true);
+  }, [isRecording]);
 
-      const feedbackPrompt = `
+  // =========================
+  // START / STOP RECORDING
+  // =========================
+
+  const StartStopRecording =
+    async () => {
+
+      if (isRecording) {
+
+        stopSpeechToText();
+
+        if (
+          userAnswer
+            .trim()
+            .length < 10
+        ) {
+
+          toast(
+            "Please record a longer answer"
+          );
+
+          return;
+        }
+
+        await GenerateFeedback();
+
+      } else {
+
+        setUserAnswer("");
+
+        setResults([]);
+
+        startSpeechToText();
+      }
+    };
+
+  // =========================
+  // GENERATE FEEDBACK
+  // =========================
+
+  const GenerateFeedback =
+    async () => {
+
+      try {
+
+        setLoading(true);
+
+        // CURRENT QUESTION
+        const currentQuestion =
+          mockInterviewQuestion?.[
+            activeQuestionIndex
+          ];
+
+        console.log(
+          "CURRENT QUESTION:",
+          currentQuestion
+        );
+
+        if (!currentQuestion) {
+
+          toast(
+            "Question not found"
+          );
+
+          return;
+        }
+
+        // SUPPORT MULTIPLE FORMATS
+        const questionText =
+
+          currentQuestion?.Question ||
+
+          currentQuestion?.question ||
+
+          "";
+
+        const answerText =
+
+          currentQuestion?.Answer ||
+
+          currentQuestion?.answer ||
+
+          "";
+
+        console.log(
+          "QUESTION TEXT:",
+          questionText
+        );
+
+        console.log(
+          "ANSWER TEXT:",
+          answerText
+        );
+
+        if (!questionText) {
+
+          toast(
+            "Invalid interview question"
+          );
+
+          return;
+        }
+
+        // =========================
+        // AI PROMPT
+        // =========================
+
+        const feedbackPrompt = `
+
 You are an AI interview evaluator.
 
 Interview Question:
-${mockInterviewQuestion[activeQuestionIndex]?.Question}
+${questionText}
 
 Candidate Answer:
 ${userAnswer}
@@ -84,85 +248,214 @@ Format:
   "feedback":"Short professional feedback",
   "improvement":"Specific improvement suggestion"
 }
+
 `;
 
-      let aiFeedback = await OpenRouterModel(feedbackPrompt);
+        // =========================
+        // OPENROUTER RESPONSE
+        // =========================
 
-console.log("RAW AI RESPONSE:", aiFeedback);
+        let aiFeedback =
+          await OpenRouterModel(
+            feedbackPrompt
+          );
 
-aiFeedback = aiFeedback
-  .replace(/```json/g, "")
-  .replace(/```/g, "")
-  .trim();
+        console.log(
+          "RAW AI RESPONSE:",
+          aiFeedback
+        );
 
-const jsonStart = aiFeedback.indexOf("{");
-const jsonEnd = aiFeedback.lastIndexOf("}");
+        if (!aiFeedback) {
 
-if (jsonStart === -1 || jsonEnd === -1) {
-  throw new Error("Invalid AI response format");
-}
+          toast(
+            "AI feedback generation failed"
+          );
 
-const cleanJson = aiFeedback.slice(
-  jsonStart,
-  jsonEnd + 1
-);
+          return;
+        }
 
-console.log("CLEAN JSON:", cleanJson);
+        // CLEAN RESPONSE
 
-const parsedFeedback =
-  JSON.parse(cleanJson);
+        aiFeedback =
+          aiFeedback
+            .replace(
+              /```json/g,
+              ""
+            )
+            .replace(
+              /```/g,
+              ""
+            )
+            .trim();
 
-      // SAVE TO DATABASE
-      await db.insert(UserAnswer).values({
-        mockIdRef: String(interviewData?.id),
+        const jsonStart =
+          aiFeedback.indexOf("{");
 
-        question:
-          mockInterviewQuestion[activeQuestionIndex]?.Question,
+        const jsonEnd =
+          aiFeedback.lastIndexOf("}");
 
-        correctAns:
-          mockInterviewQuestion[activeQuestionIndex]?.Answer || "",
+        if (
+          jsonStart === -1 ||
+          jsonEnd === -1
+        ) {
 
-        userAns: userAnswer,
+          console.log(
+            "INVALID JSON RESPONSE:",
+            aiFeedback
+          );
 
-        feedback: parsedFeedback?.feedback || "",
+          toast(
+            "Invalid AI response"
+          );
 
-        rating: parsedFeedback?.rating || "",
+          return;
+        }
 
-        userEmail:
-          user?.primaryEmailAddress?.emailAddress || "",
-      });
+        const cleanJson =
+          aiFeedback.slice(
+            jsonStart,
+            jsonEnd + 1
+          );
 
-      toast("Answer recorded successfully");
+        console.log(
+          "CLEAN JSON:",
+          cleanJson
+        );
 
-      setUserAnswer("");
-      setResults([]);
+        const parsedFeedback =
+          JSON.parse(
+            cleanJson
+          );
 
-    } catch (error) {
-      console.log("Feedback Error:", error);
-      toast("Failed to generate feedback");
-    }
+        console.log(
+          "PARSED FEEDBACK:",
+          parsedFeedback
+        );
 
-    setLoading(false);
-  };
+        // =========================
+        // SAVE TO DATABASE
+        // =========================
+
+        await db
+          .insert(UserAnswer)
+          .values({
+
+            mockIdRef:
+              String(
+                interviewData?.id
+              ),
+
+            question:
+              questionText,
+
+            correctAns:
+              answerText,
+
+            userAns:
+              userAnswer,
+
+            feedback:
+
+              parsedFeedback
+                ?.feedback ||
+
+              parsedFeedback
+                ?.improvement ||
+
+              "",
+
+            rating:
+              parsedFeedback
+                ?.rating || "0",
+
+            userEmail:
+              user
+                ?.primaryEmailAddress
+                ?.emailAddress || "",
+          });
+
+        console.log(
+          "DATABASE INSERT SUCCESS"
+        );
+
+        toast(
+          "Answer recorded successfully"
+        );
+
+        // RESET
+
+        setUserAnswer("");
+
+        setResults([]);
+
+      } catch (error) {
+
+        console.log(
+          "FEEDBACK ERROR:",
+          error
+        );
+
+        toast(
+          "Failed to generate feedback"
+        );
+      }
+
+      setLoading(false);
+    };
+
+  // =========================
+  // BROWSER SUPPORT
+  // =========================
 
   if (error) {
+
     return (
-      <p>
+
+      <p className="
+        text-red-400
+        text-center
+      ">
+
         Web Speech API is not available in this browser
+
       </p>
     );
   }
 
-  return (
-    <div className="flex flex-col items-center">
+  // =========================
+  // UI
+  // =========================
 
-      <div className="flex flex-col my-10 justify-center items-center bg-[#111827] rounded-2xl p-6 w-full">
+  return (
+
+    <div className="
+      flex
+      flex-col
+      items-center
+    ">
+
+      {/* WEBCAM */}
+
+      <div className="
+        flex
+        flex-col
+        my-10
+        justify-center
+        items-center
+        bg-[#111827]
+        rounded-2xl
+        p-6
+        w-full
+      ">
 
         <Image
           src="/webcam.png"
           width={200}
           height={200}
-          className="absolute opacity-40"
+          className="
+            absolute
+            opacity-40
+          "
           alt="webcam"
           priority
         />
@@ -170,62 +463,105 @@ const parsedFeedback =
         <Webcam
           mirrored={true}
           style={{
+
             height: 300,
+
             width: "100%",
+
             zIndex: 10,
+
             borderRadius: "20px",
           }}
         />
 
       </div>
 
+      {/* RECORD BUTTON */}
+
       <Button
         disabled={loading}
         variant="outline"
-        className="my-6 w-full"
-        onClick={StartStopRecording}
+        className="
+          my-6
+          w-full
+        "
+        onClick={
+          StartStopRecording
+        }
       >
-        {isRecording ? (
-          <h2 className="text-red-500 flex gap-2 items-center animate-pulse">
-            <StopCircle />
-            Stop Recording
-          </h2>
-        ) : (
-          <h2 className="flex gap-2 items-center">
-            <Mic />
-            Record Answer
-          </h2>
-        )}
+
+        {
+          isRecording ? (
+
+            <h2 className="
+              text-red-500
+              flex
+              gap-2
+              items-center
+              animate-pulse
+            ">
+
+              <StopCircle />
+
+              Stop Recording
+
+            </h2>
+
+          ) : (
+
+            <h2 className="
+              flex
+              gap-2
+              items-center
+            ">
+
+              <Mic />
+
+              Record Answer
+
+            </h2>
+          )
+        }
+
       </Button>
 
-      {userAnswer && (
-  <div className="
-    w-full
-    mt-6
-    p-4
-    rounded-2xl
-    bg-[#111827]
-    border
-    border-gray-700
-  ">
+      {/* ANSWER PREVIEW */}
 
-    <h2 className="
-      text-sm
-      text-blue-400
-      mb-2
-    ">
-      Your Answer
-    </h2>
+      {
+        userAnswer && (
 
-    <p className="
-      text-white
-      leading-7
-    ">
-      {userAnswer}
-    </p>
+          <div className="
+            w-full
+            mt-6
+            p-4
+            rounded-2xl
+            bg-[#111827]
+            border
+            border-gray-700
+          ">
 
-  </div>
-)}
+            <h2 className="
+              text-sm
+              text-blue-400
+              mb-2
+            ">
+
+              Your Answer
+
+            </h2>
+
+            <p className="
+              text-white
+              leading-7
+            ">
+
+              {userAnswer}
+
+            </p>
+
+          </div>
+        )
+      }
 
     </div>
   );
