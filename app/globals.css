@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* GLOBAL STYLES */
+body {
+
+  background: #000000;
+  color: #ffffff;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  overflow-x: hidden;
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar {
+
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+
+  background: #111827;
+}
+
+::-webkit-scrollbar-thumb {
+
+  background: #3b82f6;
+
+  border-radius: 20px;
+}
+
+/* SELECTION */
+::selection {
+
+  background: #2563eb;
+  color: white;
+}
+
+/* INPUT AUTOFILL FIX */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill {
+
+  -webkit-box-shadow:
+    0 0 0px 1000px #000 inset;
+
+  -webkit-text-fill-color:
+    white;
+
+  transition:
+    background-color 5000s ease-in-out 0s;
+}
