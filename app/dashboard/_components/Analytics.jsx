@@ -97,6 +97,28 @@ const XAxis =
     { ssr: false }
   );
 
+const YAxis =
+  dynamic(
+    () =>
+      import("recharts")
+        .then(
+          (mod) =>
+            mod.YAxis
+        ),
+    { ssr: false }
+  );
+
+const CartesianGrid =
+  dynamic(
+    () =>
+      import("recharts")
+        .then(
+          (mod) =>
+            mod.CartesianGrid
+        ),
+    { ssr: false }
+  );
+
 const Tooltip =
   dynamic(
     () =>
@@ -151,10 +173,6 @@ const Analytics = () => {
 
       try {
 
-        // =======================
-        // INTERVIEWS
-        // =======================
-
         const interviews =
           await db
             .select()
@@ -167,10 +185,6 @@ const Analytics = () => {
                   ?.emailAddress
               )
             );
-
-        // =======================
-        // ANSWERS
-        // =======================
 
         const answers =
           await db
@@ -185,16 +199,8 @@ const Analytics = () => {
               )
             );
 
-        // =======================
-        // TOTAL QUESTIONS
-        // =======================
-
         const totalQuestions =
           answers.length;
-
-        // =======================
-        // RATINGS
-        // =======================
 
         const ratings =
           answers
@@ -205,14 +211,8 @@ const Analytics = () => {
             )
             .filter(
               (rating) =>
-                !isNaN(
-                  rating
-                )
+                !isNaN(rating)
             );
-
-        // =======================
-        // AVERAGE
-        // =======================
 
         const averageRating =
           ratings.length > 0
@@ -225,10 +225,6 @@ const Analytics = () => {
                 ratings.length
               ).toFixed(1)
             : 0;
-
-        // =======================
-        // CONFIDENCE
-        // =======================
 
         const confidence =
           averageRating * 10;
@@ -245,75 +241,76 @@ const Analytics = () => {
           confidence,
         });
 
-        // =======================
-        // PERFORMANCE GRAPH
-        // =======================
-
         const performance =
-          ratings.map(
-            (
-              rating,
-              index
-            ) => ({
+          ratings.length > 0
+            ? ratings.map(
+                (
+                  rating,
+                  index
+                ) => ({
 
-              name:
-                `Q${index + 1}`,
+                  name:
+                    `Q${index + 1}`,
 
-              rating,
-            })
-          );
+                  rating,
+                })
+              )
+            : [
+                {
+                  name: "Q1",
+                  rating: 0,
+                },
+              ];
 
         setPerformanceData(
           performance
         );
 
-        // =======================
-        // ACTIVITY GRAPH
-        // =======================
+        const weeklyData = {
+          "Week 1": 0,
+          "Week 2": 0,
+          "Week 3": 0,
+          "Week 4": 0,
+        };
 
-        const activity = [
+interviews.forEach((interview) => {
 
-          {
-            week:
-              "Week 1",
+  const date =
+    new Date(interview.createdAt);
 
-            interviews:
-              Math.min(
-                interviews.length,
-                1
-              ),
-          },
+  const day =
+    date.getDate();
 
-          {
-            week:
-              "Week 2",
+  if (day <= 7) {
 
-            interviews:
-              Math.min(
-                interviews.length,
-                2
-              ),
-          },
+    weeklyData["Week 1"]++;
 
-          {
-            week:
-              "Week 3",
+  } else if (day <= 14) {
 
-            interviews:
-              Math.min(
-                interviews.length,
-                4
-              ),
-          },
+    weeklyData["Week 2"]++;
 
-          {
-            week:
-              "Week 4",
+  } else if (day <= 21) {
 
-            interviews:
-              interviews.length,
-          },
-        ];
+    weeklyData["Week 3"]++;
+
+  } else {
+
+    weeklyData["Week 4"]++;
+  }
+});
+
+const activity = Object.keys(
+  weeklyData
+).map((week) => ({
+
+  week,
+
+  interviews:
+    weeklyData[week],
+}));
+
+ 
+
 
         setActivityData(
           activity
@@ -403,9 +400,7 @@ const Analytics = () => {
 
     <div>
 
-      {/* ===================== */}
       {/* TOP CARDS */}
-      {/* ===================== */}
 
       <div className="
         grid
@@ -435,9 +430,6 @@ const Analytics = () => {
                     border-gray-800
                     rounded-3xl
                     p-6
-                    hover:border-blue-500
-                    transition-all
-                    duration-300
                   "
                 >
 
@@ -494,9 +486,7 @@ const Analytics = () => {
 
       </div>
 
-      {/* ===================== */}
       {/* CHARTS */}
-      {/* ===================== */}
 
       <div className="
         grid
@@ -507,6 +497,7 @@ const Analytics = () => {
       ">
 
         {/* PERFORMANCE */}
+
         <div
           className="
             bg-[#111827]
@@ -533,6 +524,7 @@ const Analytics = () => {
             <h2 className="
               text-2xl
               font-bold
+              text-white
             ">
 
               Performance Analytics
@@ -556,9 +548,19 @@ const Analytics = () => {
                 }
               >
 
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#1f2937"
+                />
+
                 <XAxis
                   dataKey="name"
-                  stroke="#666"
+                  stroke="#9ca3af"
+                />
+
+                <YAxis
+                  stroke="#9ca3af"
+                  domain={[0, 10]}
                 />
 
                 <Tooltip />
@@ -568,9 +570,7 @@ const Analytics = () => {
                   dataKey="rating"
                   stroke="#3b82f6"
                   strokeWidth={4}
-                  dot={{
-                    r: 5,
-                  }}
+                  dot={{ r: 5 }}
                 />
 
               </LineChart>
@@ -582,6 +582,7 @@ const Analytics = () => {
         </div>
 
         {/* ACTIVITY */}
+
         <div
           className="
             bg-[#111827]
@@ -608,6 +609,7 @@ const Analytics = () => {
             <h2 className="
               text-2xl
               font-bold
+              text-white
             ">
 
               Interview Activity
@@ -631,18 +633,29 @@ const Analytics = () => {
                 }
               >
 
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#1f2937"
+                />
+
                 <XAxis
                   dataKey="week"
-                  stroke="#666"
+                  stroke="#9ca3af"
+                />
+
+                <YAxis
+                  stroke="#9ca3af"
                 />
 
                 <Tooltip />
 
                 <Area
-                  type="monotone"
+                  type="linear"
                   dataKey="interviews"
                   stroke="#22c55e"
                   fill="#22c55e"
+                  fillOpacity={0.08}
+                  strokeWidth={3}
                 />
 
               </AreaChart>

@@ -12,14 +12,17 @@ import {
   MockInterview,
 } from "@/utils/schema";
 
-import {
-  desc,
-} from "drizzle-orm";
-
 import InterviewCard
 from "./InterviewCard";
 
+import { eq, desc } from "drizzle-orm";
+
+import { useUser }
+from "@clerk/nextjs";
+
 const InterviewList = () => {
+
+  const { user } = useUser();
 
   const [
     interviewList,
@@ -33,9 +36,11 @@ const InterviewList = () => {
 
   useEffect(() => {
 
+  if (user) {
     GetInterviewList();
+  }
 
-  }, []);
+}, [user]);
 
   const GetInterviewList =
     async () => {
@@ -43,16 +48,18 @@ const InterviewList = () => {
       try {
 
         const result =
-          await db
-            .select()
-            .from(
-              MockInterview
-            )
-            .orderBy(
-              desc(
-                MockInterview.id
-              )
-            );
+  await db
+    .select()
+    .from(MockInterview)
+    .where(
+      eq(
+        MockInterview.createdBy,
+        user?.primaryEmailAddress?.emailAddress
+      )
+    )
+    .orderBy(
+      desc(MockInterview.id)
+    );
 
         console.log(
           "Fetched Interviews:",

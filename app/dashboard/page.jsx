@@ -32,8 +32,12 @@ from "./_components/CreateInterviewModal";
 import Analytics
 from "./_components/Analytics";
 
+import { useUser } from "@clerk/nextjs";
+
 const Dashboard = () => {
 
+  const { user } = useUser();
+ 
   const [
     totalInterviews,
     setTotalInterviews,
@@ -46,9 +50,11 @@ const Dashboard = () => {
 
   useEffect(() => {
 
+  if (user) {
     GetDashboardData();
+  }
 
-  }, []);
+}, [user]);
 
   const GetDashboardData =
     async () => {
@@ -56,10 +62,15 @@ const Dashboard = () => {
       try {
 
         const interviews =
-          await db
-            .select()
-            .from(MockInterview);
-
+  await db
+    .select()
+    .from(MockInterview)
+    .where(
+      eq(
+        MockInterview.createdBy,
+        user?.primaryEmailAddress?.emailAddress
+      )
+    );
         console.log(
           "DASHBOARD INTERVIEWS:",
           interviews

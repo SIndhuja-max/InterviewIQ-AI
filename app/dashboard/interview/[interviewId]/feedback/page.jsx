@@ -15,35 +15,63 @@ import {
 import { Button } from "@/components/ui/button";
 import { ChevronsUpDown } from "lucide-react";
 
+import { useUser }
+from "@clerk/nextjs";
+
 const Feedback = ({ params }) => {
+  const { user } = useUser();
   const [feedbackList, setFeedbackList] = useState([]);
   const [overallRating, setOverallRating] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const router = useRouter();
 
-  useEffect(() => {
-    if (params?.interviewId) {
-      GetFeedback();
-    }
-  }, []);
+  uuseEffect(() => {
+
+  if (
+    params?.interviewId &&
+    user
+  ) {
+
+    GetFeedback();
+
+  }
+
+}, [
+  params?.interviewId,
+  user
+]);
 
   const GetFeedback = async () => {
     try {
-      const result = await db
-        .select()
-        .from(UserAnswer)
-        .where(
-          eq(
-            UserAnswer.mockIdRef,
-            String(params.interviewId)
-          )
-        )
-        .orderBy(asc(UserAnswer.id));
+      const result =
+  await db
+    .select()
+    .from(UserAnswer)
+    .where(
+      eq(
+        UserAnswer.mockIdRef,
+        String(params.interviewId)
+      )
+    )
+    .orderBy(
+      asc(UserAnswer.id)
+    );
+
+const filteredFeedback =
+  result.filter(
+    (item) =>
+      item.userEmail ===
+      user?.primaryEmailAddress
+        ?.emailAddress
+  );
+
+setFeedbackList(
+  filteredFeedback
+);
 
       console.log("Feedback Result:", result);
 
-      setFeedbackList(result);
 
       if (result.length > 0) {
         const totalRating = result.reduce(

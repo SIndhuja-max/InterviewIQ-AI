@@ -29,9 +29,13 @@ from "./_components/QuestionsSection";
 import RecordAnswerSection
 from "./_components/RecordAnswerSection";
 
+import { useUser }
+from "@clerk/nextjs";
+
 const StartInterview = ({
   params,
 }) => {
+  const { user } = useUser();
 
   const [
     interViewData,
@@ -50,14 +54,19 @@ const StartInterview = ({
 
   useEffect(() => {
 
-    if (
-      params?.interviewId
-    ) {
+  if (
+    params?.interviewId &&
+    user
+  ) {
 
-      GetInterviewDetails();
-    }
+    GetInterviewDetails();
 
-  }, [params?.interviewId]);
+  }
+
+}, [
+  params?.interviewId,
+  user
+]);
 
   const GetInterviewDetails =
     async () => {
@@ -97,11 +106,25 @@ const StartInterview = ({
         }
 
         const interview =
-          result[0];
+  result.find(
+    (item) =>
+      item.createdBy ===
+      user?.primaryEmailAddress
+        ?.emailAddress
+  );
 
-        setInterviewData(
-          interview
-        );
+if (!interview) {
+
+  console.log(
+    "Unauthorized interview access"
+  );
+
+  return;
+}
+
+setInterviewData(
+  interview
+);
 
         console.log(
           "RAW JSON:",

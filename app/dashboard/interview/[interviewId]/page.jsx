@@ -8,34 +8,62 @@ import { Lightbulb, WebcamIcon } from "lucide-react";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import Webcam from "react-webcam";
-
+import { useUser }
+from "@clerk/nextjs";
 function Interview({ params }) {
+  const { user } = useUser();
   const [interviewData, setInterviewData] = useState(null);
   const [webCamEnabled, setWebCamEnabled] = useState(false);
 
   useEffect(() => {
-    if (params?.interviewId) {
-      GetInterviewDetails();
-    }
-  }, []);
+
+  if (
+    params?.interviewId &&
+    user
+  ) {
+
+    GetInterviewDetails();
+
+  }
+
+}, [params?.interviewId, user]);
 
   const GetInterviewDetails = async () => {
     try {
-      const result = await db
-        .select()
-        .from(MockInterview)
-        .where(
-          eq(
-            MockInterview.id,
-            Number(params.interviewId)
-          )
-        );
+      const result =
+  await db
+    .select()
+    .from(MockInterview)
+    .where(
+      eq(
+        MockInterview.id,
+        Number(params.interviewId)
+      )
+    );
+
+const filteredInterview =
+  result.find(
+    (item) =>
+      item.createdBy ===
+      user?.primaryEmailAddress
+        ?.emailAddress
+  );
+
+if (!filteredInterview) {
+
+  console.log(
+    "Unauthorized Access"
+  );
+
+  return;
+}
+
+setInterviewData(
+  filteredInterview
+);
 
       console.log("Interview Details:", result);
 
-      if (result.length > 0) {
-        setInterviewData(result[0]);
-      }
     } catch (error) {
       console.log("Fetch Error:", error);
     }
