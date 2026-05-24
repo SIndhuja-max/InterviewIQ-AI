@@ -69,7 +69,7 @@ const RecordAnswerSection = ({
 You are an AI interview evaluator.
 
 Interview Question:
-${mockInterviewQuestion[activeQuestionIndex]?.question}
+${mockInterviewQuestion[activeQuestionIndex]?.Question}
 
 Candidate Answer:
 ${userAnswer}
@@ -117,10 +117,10 @@ const parsedFeedback =
         mockIdRef: String(interviewData?.id),
 
         question:
-          mockInterviewQuestion[activeQuestionIndex]?.question,
+          mockInterviewQuestion[activeQuestionIndex]?.Question,
 
         correctAns:
-          mockInterviewQuestion[activeQuestionIndex]?.answer || "",
+          mockInterviewQuestion[activeQuestionIndex]?.Answer || "",
 
         userAns: userAnswer,
 
