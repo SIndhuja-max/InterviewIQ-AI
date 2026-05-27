@@ -1,203 +1,334 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { db } from "@/utils/db";
-import { UserAnswer } from "@/utils/schema";
-import { eq, asc } from "drizzle-orm";
-import { useRouter } from "next/navigation";
+import React, {
+  useEffect,
+  useState,
+} from "react";
+
+import Link
+from "next/link";
 
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+  useParams,
+} from "next/navigation";
 
-import { Button } from "@/components/ui/button";
-import { ChevronsUpDown } from "lucide-react";
+import {
+  Button,
+} from "@/components/ui/button";
 
-import { useUser }
-from "@clerk/nextjs";
+const Feedback = () => {
 
-const Feedback = ({ params }) => {
-  const { user } = useUser();
-  const [feedbackList, setFeedbackList] = useState([]);
-  const [overallRating, setOverallRating] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const params =
+    useParams();
 
-  const router = useRouter();
+  const interviewId =
+    params?.interviewId;
+
+  const [
+    feedbackList,
+    setFeedbackList,
+  ] = useState([]);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  // =========================
+  // FETCH FEEDBACK
+  // =========================
 
   useEffect(() => {
 
-  if (
-    params?.interviewId &&
-    user
-  ) {
+    if (interviewId) {
 
-    GetFeedback();
-
-  }
-
-}, [
-  params?.interviewId,
-  user
-]);
-
-  const GetFeedback = async () => {
-    try {
-      const result =
-  await db
-    .select()
-    .from(UserAnswer)
-    .where(
-      eq(
-        UserAnswer.mockIdRef,
-        String(params.interviewId)
-      )
-    )
-    .orderBy(
-      asc(UserAnswer.id)
-    );
-
-const filteredFeedback =
-  result.filter(
-    (item) =>
-      item.userEmail ===
-      user?.primaryEmailAddress
-        ?.emailAddress
-  );
-
-setFeedbackList(
-  filteredFeedback
-);
-
-      console.log("Feedback Result:", result);
-
-
-      if (result.length > 0) {
-        const totalRating = result.reduce(
-          (sum, item) =>
-            sum + Number(item.rating || 0),
-          0
-        );
-
-        const avgRating = (
-          totalRating / result.length
-        ).toFixed(1);
-
-        setOverallRating(avgRating);
-      }
-
-    } catch (error) {
-      console.log("Feedback Fetch Error:", error);
+      GetFeedback();
     }
 
-    setLoading(false);
-  };
+  }, [interviewId]);
+
+  const GetFeedback =
+    async () => {
+
+      try {
+
+        console.log(
+          "FETCHING FEEDBACK FOR:",
+          interviewId
+        );
+
+        const response =
+          await fetch(
+
+            `/api/get-feedback?mockIdRef=${interviewId}`,
+
+            {
+              cache: "no-store",
+            }
+          );
+
+        const result =
+          await response.json();
+
+        console.log(
+          "Feedback Result:",
+          result
+        );
+
+        setFeedbackList(
+          Array.isArray(result)
+            ? result
+            : []
+        );
+
+      } catch (error) {
+
+        console.log(
+          "FEEDBACK FETCH ERROR:",
+          error
+        );
+      }
+
+      setLoading(false);
+    };
+
+  // =========================
+  // LOADING
+  // =========================
 
   if (loading) {
+
     return (
-      <div className="p-10 text-white">
-        Loading feedback...
+
+      <div className="
+        min-h-screen
+        bg-black
+        text-white
+        flex
+        items-center
+        justify-center
+      ">
+
+        Loading Feedback...
+
       </div>
     );
   }
 
+  // =========================
+  // UI
+  // =========================
+
   return (
-    <div className="p-10 text-white">
 
-      <h2 className="text-4xl font-bold text-green-400">
+    <div className="
+      min-h-screen
+      bg-black
+      text-white
+      p-10
+    ">
+
+      <h1 className="
+        text-5xl
+        font-bold
+        text-green-400
+      ">
+
         Congratulations 🎉
-      </h2>
 
-      <h2 className="font-bold text-2xl mt-3">
+      </h1>
+
+      <h2 className="
+        text-3xl
+        font-semibold
+        mt-4
+      ">
+
         Here is your interview feedback
+
       </h2>
 
-      {feedbackList.length === 0 ? (
-        <div className="mt-8">
-          <h2 className="text-lg text-yellow-400">
-            No interview feedback found
-          </h2>
-        </div>
-      ) : (
-        <>
-          <div className="mt-6 bg-[#111827] border border-gray-800 rounded-2xl p-6">
+      {
+        feedbackList.length === 0 ? (
 
-            <h2 className="text-lg">
-              Your Overall Interview Rating:
-              <strong className="text-blue-400 ml-2">
-                {overallRating}/10
-              </strong>
+          <div className="
+            mt-16
+          ">
+
+            <h2 className="
+              text-2xl
+              text-yellow-400
+            ">
+
+              No interview feedback found
+
             </h2>
-
-            <p className="text-gray-400 mt-3">
-              Below are your interview questions,
-              your answers, ideal answers,
-              and AI-generated feedback for improvement.
-            </p>
 
           </div>
 
-          <div className="mt-8">
+        ) : (
 
-            {feedbackList.map((item, index) => (
-              <Collapsible
-                key={index}
-                className="mt-5"
-              >
-                <CollapsibleTrigger className="w-full p-4 flex justify-between items-center bg-[#111827] border border-gray-800 rounded-xl text-left">
+          <div className="
+            mt-10
+            space-y-6
+          ">
 
-                  <span>
-                    {index + 1}. {item.question}
-                  </span>
+            {
+              feedbackList.map(
+                (
+                  item,
+                  index
+                ) => (
 
-                  <ChevronsUpDown className="h-5 w-5" />
+                  <div
+                    key={index}
+                    className="
+                      bg-[#111827]
+                      border
+                      border-gray-800
+                      rounded-3xl
+                      p-6
+                    "
+                  >
 
-                </CollapsibleTrigger>
+                    <h2 className="
+                      text-xl
+                      font-bold
+                      text-blue-400
+                    ">
 
-                <CollapsibleContent>
-                  <div className="flex flex-col gap-4 mt-4">
+                      Question
 
-                    <div className="p-4 border border-red-400 rounded-xl bg-red-500/10">
-                      <strong>Rating:</strong> {item.rating}/10
-                    </div>
+                    </h2>
 
-                    <div className="p-4 border border-yellow-400 rounded-xl bg-yellow-500/10">
-                      <strong>Your Answer:</strong>
-                      <p className="mt-2">
+                    <p className="
+                      mt-2
+                      text-gray-300
+                      leading-7
+                    ">
+
+                      {item.question}
+
+                    </p>
+
+                    <div className="
+                      mt-6
+                    ">
+
+                      <h2 className="
+                        text-xl
+                        font-bold
+                        text-yellow-400
+                      ">
+
+                        Your Answer
+
+                      </h2>
+
+                      <p className="
+                        mt-2
+                        text-gray-300
+                        leading-7
+                      ">
+
                         {item.userAns}
+
                       </p>
+
                     </div>
 
-                    <div className="p-4 border border-green-400 rounded-xl bg-green-500/10">
-                      <strong>Ideal Answer:</strong>
-                      <p className="mt-2">
-                        {item.correctAns || "Not Available"}
-                      </p>
-                    </div>
+                    <div className="
+                      mt-6
+                    ">
 
-                    <div className="p-4 border border-blue-400 rounded-xl bg-blue-500/10">
-                      <strong>AI Feedback:</strong>
-                      <p className="mt-2">
+                      <h2 className="
+                        text-xl
+                        font-bold
+                        text-green-400
+                      ">
+
+                        AI Feedback
+
+                      </h2>
+
+                      <p className="
+                        mt-2
+                        text-gray-300
+                        leading-7
+                      ">
+
                         {item.feedback}
+
                       </p>
+
+                    </div>
+
+                    <div className="
+                      mt-6
+                      flex
+                      items-center
+                      gap-3
+                    ">
+
+                      <h2 className="
+                        text-xl
+                        font-bold
+                        text-pink-400
+                      ">
+
+                        Rating
+
+                      </h2>
+
+                      <span className="
+                        bg-pink-500/20
+                        text-pink-400
+                        px-4
+                        py-2
+                        rounded-xl
+                        font-semibold
+                      ">
+
+                        {item.rating}/10
+
+                      </span>
+
                     </div>
 
                   </div>
-                </CollapsibleContent>
-              </Collapsible>
-            ))}
+                )
+              )
+            }
 
           </div>
-        </>
-      )}
+        )
+      }
 
-      <Button
-        className="mt-10 bg-blue-600 hover:bg-blue-700"
-        onClick={() => router.replace("/dashboard")}
-      >
-        Go Back to Dashboard
-      </Button>
+      <div className="
+        mt-10
+      ">
+
+        <Link
+          href="/dashboard"
+        >
+
+          <Button
+            className="
+              bg-blue-600
+              hover:bg-blue-700
+              px-8
+              py-6
+              rounded-2xl
+            "
+          >
+
+            Go Back to Dashboard
+
+          </Button>
+
+        </Link>
+
+      </div>
 
     </div>
   );

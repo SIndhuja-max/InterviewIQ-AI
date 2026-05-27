@@ -5,8 +5,6 @@ import React, {
   useState,
 } from "react";
 
-import dynamic from "next/dynamic";
-
 import {
   Briefcase,
   Star,
@@ -16,124 +14,31 @@ import {
   Activity,
 } from "lucide-react";
 
-import { db } from "@/utils/db";
+import {
+  useUser,
+} from "@clerk/nextjs";
 
 import {
-  MockInterview,
-  UserAnswer,
-} from "@/utils/schema";
-
-import { eq } from "drizzle-orm";
-
-import { useUser } from "@clerk/nextjs";
-
-// =======================
-// RECHARTS
-// =======================
-
-const ResponsiveContainer =
-  dynamic(
-    () =>
-      import("recharts")
-        .then(
-          (mod) =>
-            mod.ResponsiveContainer
-        ),
-    { ssr: false }
-  );
-
-const LineChart =
-  dynamic(
-    () =>
-      import("recharts")
-        .then(
-          (mod) =>
-            mod.LineChart
-        ),
-    { ssr: false }
-  );
-
-const Line =
-  dynamic(
-    () =>
-      import("recharts")
-        .then(
-          (mod) =>
-            mod.Line
-        ),
-    { ssr: false }
-  );
-
-const AreaChart =
-  dynamic(
-    () =>
-      import("recharts")
-        .then(
-          (mod) =>
-            mod.AreaChart
-        ),
-    { ssr: false }
-  );
-
-const Area =
-  dynamic(
-    () =>
-      import("recharts")
-        .then(
-          (mod) =>
-            mod.Area
-        ),
-    { ssr: false }
-  );
-
-const XAxis =
-  dynamic(
-    () =>
-      import("recharts")
-        .then(
-          (mod) =>
-            mod.XAxis
-        ),
-    { ssr: false }
-  );
-
-const YAxis =
-  dynamic(
-    () =>
-      import("recharts")
-        .then(
-          (mod) =>
-            mod.YAxis
-        ),
-    { ssr: false }
-  );
-
-const CartesianGrid =
-  dynamic(
-    () =>
-      import("recharts")
-        .then(
-          (mod) =>
-            mod.CartesianGrid
-        ),
-    { ssr: false }
-  );
-
-const Tooltip =
-  dynamic(
-    () =>
-      import("recharts")
-        .then(
-          (mod) =>
-            mod.Tooltip
-        ),
-    { ssr: false }
-  );
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from "recharts";
 
 const Analytics = () => {
 
   const { user } =
     useUser();
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
   const [
     stats,
@@ -159,9 +64,16 @@ const Analytics = () => {
     setActivityData,
   ] = useState([]);
 
+  // =======================
+  // FETCH ANALYTICS
+  // =======================
+
   useEffect(() => {
 
-    if (user) {
+    if (
+      user?.primaryEmailAddress
+        ?.emailAddress
+    ) {
 
       GetAnalytics();
     }
@@ -173,157 +85,148 @@ const Analytics = () => {
 
       try {
 
-        const interviews =
-          await db
-            .select()
-            .from(MockInterview)
-            .where(
-              eq(
-                MockInterview.createdBy,
-                user
-                  ?.primaryEmailAddress
-                  ?.emailAddress
-              )
-            );
+        setLoading(true);
 
-        const answers =
-          await db
-            .select()
-            .from(UserAnswer)
-            .where(
-              eq(
-                UserAnswer.userEmail,
-                user
-                  ?.primaryEmailAddress
-                  ?.emailAddress
-              )
-            );
+        const email =
+          user
+            ?.primaryEmailAddress
+            ?.emailAddress
+            ?.trim()
+            ?.toLowerCase();
 
-        const totalQuestions =
-          answers.length;
+        console.log(
+          "FETCH ANALYTICS EMAIL:",
+          email
+        );
 
-        const ratings =
-          answers
-            .map((item) =>
-              parseFloat(
-                item.rating
-              )
-            )
-            .filter(
-              (rating) =>
-                !isNaN(rating)
-            );
+        if (!email) {
 
-        const averageRating =
-          ratings.length > 0
-            ? (
-                ratings.reduce(
-                  (a, b) =>
-                    a + b,
-                  0
-                ) /
-                ratings.length
-              ).toFixed(1)
-            : 0;
+          setLoading(false);
 
-        const confidence =
-          averageRating * 10;
+          return;
+        }
+
+        const response =
+          await fetch(
+
+            `/api/analytics?email=${encodeURIComponent(email)}`,
+
+            {
+              cache: "no-store",
+            }
+          );
+
+        if (!response.ok) {
+
+          throw new Error(
+            "Failed to fetch analytics"
+          );
+        }
+
+        const data =
+          await response.json();
+
+        console.log(
+          "ANALYTICS DATA:",
+          data
+        );
+
+        if (!data.success) {
+
+          throw new Error(
+
+            data?.message ||
+
+            "Analytics fetch failed"
+          );
+        }
+
+        // =======================
+        // STATS
+        // =======================
 
         setStats({
 
           totalInterviews:
-            interviews.length,
+            data?.stats
+              ?.totalInterviews || 0,
 
-          totalQuestions,
+          totalQuestions:
+            data?.stats
+              ?.totalQuestions || 0,
 
-          averageRating,
+          averageRating:
+            data?.stats
+              ?.averageRating || 0,
 
-          confidence,
+          confidence:
+            data?.stats
+              ?.confidence || 0,
         });
 
-        const performance =
-          ratings.length > 0
-            ? ratings.map(
-                (
-                  rating,
-                  index
-                ) => ({
-
-                  name:
-                    `Q${index + 1}`,
-
-                  rating,
-                })
-              )
-            : [
-                {
-                  name: "Q1",
-                  rating: 0,
-                },
-              ];
+        // =======================
+        // PERFORMANCE GRAPH
+        // =======================
 
         setPerformanceData(
-          performance
+
+          Array.isArray(
+            data?.performanceData
+          )
+
+            ? data.performanceData
+
+            : []
         );
 
-        const weeklyData = {
-          "Week 1": 0,
-          "Week 2": 0,
-          "Week 3": 0,
-          "Week 4": 0,
-        };
-
-interviews.forEach((interview) => {
-
-  const date =
-    new Date(interview.createdAt);
-
-  const day =
-    date.getDate();
-
-  if (day <= 7) {
-
-    weeklyData["Week 1"]++;
-
-  } else if (day <= 14) {
-
-    weeklyData["Week 2"]++;
-
-  } else if (day <= 21) {
-
-    weeklyData["Week 3"]++;
-
-  } else {
-
-    weeklyData["Week 4"]++;
-  }
-});
-
-const activity = Object.keys(
-  weeklyData
-).map((week) => ({
-
-  week,
-
-  interviews:
-    weeklyData[week],
-}));
-
- 
-
+        // =======================
+        // ACTIVITY GRAPH
+        // =======================
 
         setActivityData(
-          activity
+
+          Array.isArray(
+            data?.activityData
+          )
+
+            ? data.activityData
+
+            : []
         );
 
       } catch (error) {
 
         console.log(
-          "Analytics Error:",
+          "ANALYTICS FETCH ERROR:",
           error
         );
+
+        // RESET SAFE FALLBACK
+
+        setStats({
+
+          totalInterviews: 0,
+
+          totalQuestions: 0,
+
+          averageRating: 0,
+
+          confidence: 0,
+        });
+
+        setPerformanceData([]);
+
+        setActivityData([]);
+
+      } finally {
+
+        setLoading(false);
       }
     };
+
+  // =======================
+  // CARDS
+  // =======================
 
   const analyticsCards = [
 
@@ -396,19 +299,47 @@ const activity = Object.keys(
     },
   ];
 
+  // =======================
+  // LOADING UI
+  // =======================
+
+  if (loading) {
+
+    return (
+
+      <div
+        className="
+          text-white
+          mt-10
+          text-lg
+        "
+      >
+
+        Loading analytics...
+
+      </div>
+    );
+  }
+
+  // =======================
+  // MAIN UI
+  // =======================
+
   return (
 
     <div>
 
       {/* TOP CARDS */}
 
-      <div className="
-        grid
-        grid-cols-1
-        md:grid-cols-2
-        xl:grid-cols-4
-        gap-6
-      ">
+      <div
+        className="
+          grid
+          grid-cols-1
+          md:grid-cols-2
+          xl:grid-cols-4
+          gap-6
+        "
+      >
 
         {
           analyticsCards.map(
@@ -433,28 +364,38 @@ const activity = Object.keys(
                   "
                 >
 
-                  <div className="
-                    flex
-                    items-center
-                    justify-between
-                  ">
+                  <div
+                    className="
+                      flex
+                      items-center
+                      justify-between
+                    "
+                  >
 
                     <div>
 
-                      <p className="
-                        text-gray-400
-                        text-sm
-                      ">
+                      <p
+                        className="
+                          text-gray-400
+                          text-sm
+                        "
+                      >
+
                         {card.title}
+
                       </p>
 
-                      <h2 className="
-                        text-4xl
-                        font-bold
-                        text-white
-                        mt-3
-                      ">
+                      <h2
+                        className="
+                          text-4xl
+                          font-bold
+                          text-white
+                          mt-3
+                        "
+                      >
+
                         {card.value}
+
                       </h2>
 
                     </div>
@@ -488,13 +429,15 @@ const activity = Object.keys(
 
       {/* CHARTS */}
 
-      <div className="
-        grid
-        grid-cols-1
-        xl:grid-cols-2
-        gap-6
-        mt-8
-      ">
+      <div
+        className="
+          grid
+          grid-cols-1
+          xl:grid-cols-2
+          gap-6
+          mt-8
+        "
+      >
 
         {/* PERFORMANCE */}
 
@@ -508,12 +451,14 @@ const activity = Object.keys(
           "
         >
 
-          <div className="
-            flex
-            items-center
-            gap-3
-            mb-6
-          ">
+          <div
+            className="
+              flex
+              items-center
+              gap-3
+              mb-6
+            "
+          >
 
             <TrendingUp
               className="
@@ -521,11 +466,13 @@ const activity = Object.keys(
               "
             />
 
-            <h2 className="
-              text-2xl
-              font-bold
-              text-white
-            ">
+            <h2
+              className="
+                text-2xl
+                font-bold
+                text-white
+              "
+            >
 
               Performance Analytics
 
@@ -533,9 +480,11 @@ const activity = Object.keys(
 
           </div>
 
-          <div className="
-            h-[320px]
-          ">
+          <div
+            className="
+              h-[320px]
+            "
+          >
 
             <ResponsiveContainer
               width="100%"
@@ -593,12 +542,14 @@ const activity = Object.keys(
           "
         >
 
-          <div className="
-            flex
-            items-center
-            gap-3
-            mb-6
-          ">
+          <div
+            className="
+              flex
+              items-center
+              gap-3
+              mb-6
+            "
+          >
 
             <Activity
               className="
@@ -606,11 +557,13 @@ const activity = Object.keys(
               "
             />
 
-            <h2 className="
-              text-2xl
-              font-bold
-              text-white
-            ">
+            <h2
+              className="
+                text-2xl
+                font-bold
+                text-white
+              "
+            >
 
               Interview Activity
 
@@ -618,9 +571,11 @@ const activity = Object.keys(
 
           </div>
 
-          <div className="
-            h-[320px]
-          ">
+          <div
+            className="
+              h-[320px]
+            "
+          >
 
             <ResponsiveContainer
               width="100%"

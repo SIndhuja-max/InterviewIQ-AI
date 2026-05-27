@@ -3,15 +3,17 @@
 import React, {
   useEffect,
   useState,
+  useRef,
 } from "react";
 
-import {
-  Button,
-} from "@/components/ui/button";
+import { Button }
+from "@/components/ui/button";
 
-import Image from "next/image";
+import Image
+from "next/image";
 
-import Webcam from "react-webcam";
+import Webcam
+from "react-webcam";
 
 import useSpeechToText
 from "react-hook-speech-to-text";
@@ -27,14 +29,9 @@ from "sonner";
 import OpenRouterModel
 from "@/utils/OpenRouterAiModel";
 
-import { useUser }
-from "@clerk/nextjs";
-
-import { db }
-from "@/utils/db";
-
-import { UserAnswer }
-from "@/utils/schema";
+import {
+  useUser,
+} from "@clerk/nextjs";
 
 const RecordAnswerSection = ({
   mockInterviewQuestion,
@@ -55,6 +52,9 @@ const RecordAnswerSection = ({
     setLoading,
   ] = useState(false);
 
+  const recognitionLock =
+    useRef(false);
+
   const {
 
     error,
@@ -74,15 +74,10 @@ const RecordAnswerSection = ({
     continuous: true,
 
     useLegacyResults: false,
-
-    speechRecognitionProperties: {
-
-      interimResults: true,
-    },
   });
 
   // =========================
-  // SPEECH TO TEXT
+  // LIVE TRANSCRIPT
   // =========================
 
   useEffect(() => {
@@ -105,130 +100,183 @@ const RecordAnswerSection = ({
   }, [results]);
 
   // =========================
-  // AUTO RESTART RECORDING
-  // =========================
-
-  useEffect(() => {
-
-    if (
-      !isRecording &&
-      loading === false &&
-      userAnswer.length > 0
-    ) {
-
-      startSpeechToText();
-    }
-
-  }, [isRecording]);
-
-  // =========================
   // START / STOP RECORDING
   // =========================
 
   const StartStopRecording =
     async () => {
 
-      if (isRecording) {
+      try {
 
-        stopSpeechToText();
+        // =====================
+        // STOP RECORDING
+        // =====================
 
-        if (
-          userAnswer
-            .trim()
-            .length < 10
-        ) {
+        if (isRecording) {
 
-          toast(
-            "Please record a longer answer"
+          stopSpeechToText();
+
+          recognitionLock.current =
+            false;
+
+          const finalTranscript =
+            results
+              .map(
+                (result) =>
+                  result.transcript
+              )
+              .join(" ");
+
+          console.log(
+            "FINAL TRANSCRIPT:",
+            finalTranscript
           );
 
-          return;
+          if (
+            finalTranscript
+              .trim()
+              .length < 10
+          ) {
+
+            toast(
+              "Please record a longer answer"
+            );
+
+            return;
+          }
+
+          setUserAnswer(
+            finalTranscript
+          );
+
+          await GenerateFeedback(
+            finalTranscript
+          );
         }
 
-        await GenerateFeedback();
+        // =====================
+        // START RECORDING
+        // =====================
 
-      } else {
+        else {
 
-        setUserAnswer("");
+          // PREVENT DOUBLE START
 
-        setResults([]);
+          if (
+            recognitionLock.current
+          ) {
 
-        startSpeechToText();
+            return;
+          }
+
+          recognitionLock.current =
+            true;
+
+          setUserAnswer("");
+
+          setResults([]);
+
+          await startSpeechToText();
+        }
+
+      } catch (error) {
+
+        recognitionLock.current =
+          false;
+
+        console.log(
+          "MIC ERROR:",
+          error
+        );
+
+        toast(
+          "Microphone error"
+        );
       }
     };
 
   // =========================
   // GENERATE FEEDBACK
   // =========================
-
   const GenerateFeedback =
-    async () => {
+  async (finalAnswer) => {
 
-      try {
+    try {
 
-        setLoading(true);
+      setLoading(true);
 
-        // CURRENT QUESTION
-        const currentQuestion =
-          mockInterviewQuestion?.[
-            activeQuestionIndex
-          ];
+      const currentQuestion =
+        mockInterviewQuestion?.[
+          activeQuestionIndex
+        ];
 
-        console.log(
-          "CURRENT QUESTION:",
-          currentQuestion
+      if (!currentQuestion) {
+
+        toast(
+          "Question not found"
         );
 
-        if (!currentQuestion) {
+        return;
+      }
 
-          toast(
-            "Question not found"
-          );
+      // =====================
+      // SAFE QUESTION EXTRACTION
+      // =====================
 
-          return;
-        }
+      const questionText =
 
-        // SUPPORT MULTIPLE FORMATS
-        const questionText =
+        currentQuestion?.question ||
 
-          currentQuestion?.Question ||
+        currentQuestion?.Question ||
 
-          currentQuestion?.question ||
+        currentQuestion?.q ||
 
-          "";
+        currentQuestion?.text ||
 
-        const answerText =
+        currentQuestion?.query ||
 
-          currentQuestion?.Answer ||
+        currentQuestion?.ask ||
 
-          currentQuestion?.answer ||
+        currentQuestion?.title ||
 
-          "";
+        currentQuestion?.problem ||
 
-        console.log(
-          "QUESTION TEXT:",
-          questionText
+        currentQuestion?.description ||
+
+        (
+          typeof currentQuestion ===
+          "string"
+            ? currentQuestion
+            : ""
         );
 
-        console.log(
-          "ANSWER TEXT:",
-          answerText
+      const answerText =
+
+        currentQuestion?.answer ||
+
+        currentQuestion?.Answer ||
+
+        "";
+
+      console.log(
+        "QUESTION TEXT:",
+        questionText
+      );
+
+      if (!questionText) {
+
+        toast(
+          "Invalid question"
         );
 
-        if (!questionText) {
+        return;
+      }
 
-          toast(
-            "Invalid interview question"
-          );
+      // =====================
+      // AI PROMPT
+      // =====================
 
-          return;
-        }
-
-        // =========================
-        // AI PROMPT
-        // =========================
-
-        const feedbackPrompt = `
+      const feedbackPrompt = `
 
 You are an AI interview evaluator.
 
@@ -236,7 +284,7 @@ Interview Question:
 ${questionText}
 
 Candidate Answer:
-${userAnswer}
+${finalAnswer}
 
 Evaluate the answer professionally.
 
@@ -248,81 +296,122 @@ Format:
   "feedback":"Short professional feedback",
   "improvement":"Specific improvement suggestion"
 }
-
 `;
 
-        // =========================
-        // OPENROUTER RESPONSE
-        // =========================
+      console.log(
+        "GENERATING AI FEEDBACK..."
+      );
 
-        let aiFeedback =
-          await OpenRouterModel(
-            feedbackPrompt
-          );
+      // =====================
+      // OPENROUTER CALL
+      // =====================
+
+      let aiFeedback =
+        await OpenRouterModel(
+          feedbackPrompt
+        );
+
+      console.log(
+        "OPENROUTER RESPONSE RECEIVED"
+      );
+
+      console.log(
+        "RAW AI RESPONSE:",
+        aiFeedback
+      );
+
+      // =====================
+      // EMPTY RESPONSE
+      // =====================
+
+      if (
+        !aiFeedback ||
+        aiFeedback.trim() === ""
+      ) {
 
         console.log(
-          "RAW AI RESPONSE:",
+          "EMPTY AI RESPONSE"
+        );
+
+        toast(
+          "AI response failed"
+        );
+
+        return;
+      }
+
+      // =====================
+      // CLEAN RESPONSE
+      // =====================
+
+      aiFeedback =
+        aiFeedback
+          .replace(
+            /```json/g,
+            ""
+          )
+          .replace(
+            /```/g,
+            ""
+          )
+          .replace(
+            /<think>[\s\S]*?<\/think>/g,
+            ""
+          )
+          .trim();
+
+      console.log(
+        "CLEANED AI RESPONSE:",
+        aiFeedback
+      );
+
+      // =====================
+      // FIND JSON
+      // =====================
+
+      const jsonStart =
+        aiFeedback.indexOf("{");
+
+      const jsonEnd =
+        aiFeedback.lastIndexOf("}");
+
+      if (
+        jsonStart === -1 ||
+        jsonEnd === -1
+      ) {
+
+        console.log(
+          "INVALID AI JSON:",
           aiFeedback
         );
 
-        if (!aiFeedback) {
-
-          toast(
-            "AI feedback generation failed"
-          );
-
-          return;
-        }
-
-        // CLEAN RESPONSE
-
-        aiFeedback =
-          aiFeedback
-            .replace(
-              /```json/g,
-              ""
-            )
-            .replace(
-              /```/g,
-              ""
-            )
-            .trim();
-
-        const jsonStart =
-          aiFeedback.indexOf("{");
-
-        const jsonEnd =
-          aiFeedback.lastIndexOf("}");
-
-        if (
-          jsonStart === -1 ||
-          jsonEnd === -1
-        ) {
-
-          console.log(
-            "INVALID JSON RESPONSE:",
-            aiFeedback
-          );
-
-          toast(
-            "Invalid AI response"
-          );
-
-          return;
-        }
-
-        const cleanJson =
-          aiFeedback.slice(
-            jsonStart,
-            jsonEnd + 1
-          );
-
-        console.log(
-          "CLEAN JSON:",
-          cleanJson
+        toast(
+          "Invalid AI response"
         );
 
-        const parsedFeedback =
+        return;
+      }
+
+      const cleanJson =
+        aiFeedback.slice(
+          jsonStart,
+          jsonEnd + 1
+        );
+
+      console.log(
+        "CLEAN JSON:",
+        cleanJson
+      );
+
+      // =====================
+      // SAFE JSON PARSE
+      // =====================
+
+      let parsedFeedback;
+
+      try {
+
+        parsedFeedback =
           JSON.parse(
             cleanJson
           );
@@ -332,79 +421,146 @@ Format:
           parsedFeedback
         );
 
-        // =========================
-        // SAVE TO DATABASE
-        // =========================
-
-        await db
-          .insert(UserAnswer)
-          .values({
-
-            mockIdRef:
-              String(
-                interviewData?.id
-              ),
-
-            question:
-              questionText,
-
-            correctAns:
-              answerText,
-
-            userAns:
-              userAnswer,
-
-            feedback:
-
-              parsedFeedback
-                ?.feedback ||
-
-              parsedFeedback
-                ?.improvement ||
-
-              "",
-
-            rating:
-              parsedFeedback
-                ?.rating || "0",
-
-            userEmail:
-              user
-                ?.primaryEmailAddress
-                ?.emailAddress || "",
-          });
+      } catch (parseError) {
 
         console.log(
-          "DATABASE INSERT SUCCESS"
+          "JSON PARSE ERROR:",
+          parseError
+        );
+
+        console.log(
+          "BROKEN JSON:",
+          cleanJson
         );
 
         toast(
-          "Answer recorded successfully"
+          "AI returned invalid JSON"
         );
 
-        // RESET
-
-        setUserAnswer("");
-
-        setResults([]);
-
-      } catch (error) {
-
-        console.log(
-          "FEEDBACK ERROR:",
-          error
-        );
-
-        toast(
-          "Failed to generate feedback"
-        );
+        return;
       }
 
-      setLoading(false);
-    };
+      // =====================
+      // INSERT DATA
+      // =====================
+
+      const insertData = {
+
+        mockIdRef:
+          String(
+            interviewData?.id
+          ),
+
+        question:
+          questionText,
+
+        correctAns:
+          answerText,
+
+        userAns:
+          finalAnswer,
+
+        feedback:
+          parsedFeedback?.feedback || "",
+
+        rating:
+          String(
+            parsedFeedback?.rating || "0"
+          ),
+
+        userEmail:
+  user
+    ?.primaryEmailAddress
+    ?.emailAddress
+    ?.trim()
+    ?.toLowerCase() || "",
+      };
+
+      console.log(
+        "INSERT DATA:",
+        insertData
+      );
+
+      // =====================
+      // SAVE TO DATABASE
+      // =====================
+
+      const response =
+        await fetch(
+          "/api/save-feedback",
+          {
+
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify(
+              insertData
+            ),
+          }
+        );
+
+      const data =
+        await response.json();
+
+      console.log(
+        "SAVE API RESPONSE:",
+        data
+      );
+
+      // =====================
+      // SAVE FAILED
+      // =====================
+
+      if (!data.success) {
+
+        console.log(
+          "DATABASE SAVE FAILED:",
+          data
+        );
+
+        toast(
+          "Database save failed"
+        );
+
+        return;
+      }
+
+      console.log(
+        "DATABASE INSERT SUCCESS"
+      );
+
+      toast(
+        "Answer recorded successfully"
+      );
+
+      // RESET
+
+      setUserAnswer("");
+
+      setResults([]);
+
+    } catch (error) {
+
+      console.log(
+        "FEEDBACK ERROR:",
+        error
+      );
+
+      toast(
+        "Failed to generate feedback"
+      );
+    }
+
+    setLoading(false);
+  };
+  
 
   // =========================
-  // BROWSER SUPPORT
+  // UNSUPPORTED
   // =========================
 
   if (error) {
@@ -433,8 +589,6 @@ Format:
       flex-col
       items-center
     ">
-
-      {/* WEBCAM */}
 
       <div className="
         flex
@@ -475,8 +629,6 @@ Format:
         />
 
       </div>
-
-      {/* RECORD BUTTON */}
 
       <Button
         disabled={loading}
@@ -524,8 +676,6 @@ Format:
         }
 
       </Button>
-
-      {/* ANSWER PREVIEW */}
 
       {
         userAnswer && (

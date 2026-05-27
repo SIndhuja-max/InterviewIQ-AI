@@ -8,16 +8,6 @@ import {
   useUser,
 } from "@clerk/nextjs";
 
-import OpenRouterModel
-from "@/utils/OpenRouterAiModel";
-
-import { db }
-from "@/utils/db";
-
-import {
-  MockInterview,
-  UserSettings,
-} from "@/utils/schema";
 
 import {
   Dialog,
@@ -33,9 +23,6 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import { eq }
-from "drizzle-orm";
-
 const CreateInterviewModal = () => {
 
   const { user } =
@@ -50,6 +37,11 @@ const CreateInterviewModal = () => {
   ] = useState("");
 
   const [
+    companyName,
+    setCompanyName,
+  ] = useState("");
+
+  const [
     jobDesc,
     setJobDesc,
   ] = useState("");
@@ -59,55 +51,74 @@ const CreateInterviewModal = () => {
     setJobExperience,
   ] = useState("");
 
-  const [
-    companyName,
-    setCompanyName,
-  ] = useState("");
-
   const [loading, setLoading] =
     useState(false);
 
-  const onSubmit = async (e) => {
+  // =========================
+  // SUBMIT
+  // =========================
 
-    e.preventDefault();
+  const onSubmit =
+    async (e) => {
 
-    if (!user) {
+      e.preventDefault();
 
-      alert(
-        "Please login first"
-      );
+      if (!user) {
 
-      return;
-    }
+        alert(
+          "Please login first"
+        );
 
-    setLoading(true);
+        return;
+      }
 
-    try {
+      setLoading(true);
 
-      // FETCH USER SETTINGS
-      const settings =
-        await db
-          .select()
-          .from(UserSettings)
-          .where(
-            eq(
-              UserSettings.userEmail,
-              user?.primaryEmailAddress
-                ?.emailAddress
-            )
+      try {
+
+        // =========================
+        // VALIDATION
+        // =========================
+
+        if (
+          !jobPosition.trim() ||
+          !companyName.trim() ||
+          !jobDesc.trim() ||
+          !jobExperience.trim()
+        ) {
+
+          alert(
+            "All fields are required"
           );
 
-      const difficulty =
-        settings[0]?.difficulty ||
-        "Intermediate";
+          setLoading(false);
 
-      const resumeText =
-      localStorage.getItem(
-      "resumeText"
-      ) || "";
+          return;
+        }
 
-      // AI PROMPT
-      const InputPrompt = `
+        // =========================
+        // SETTINGS
+        // =========================
+
+        const difficulty =
+          "Intermediate";
+
+        // =========================
+        // RESUME TEXT
+        // =========================
+
+        const resumeText =
+          (
+            localStorage.getItem(
+              "resumeText"
+            ) || ""
+          ).slice(0, 3000);
+
+        // =========================
+        // AI PROMPT
+        // =========================
+
+        const InputPrompt = `
 
 Job Position:
 ${jobPosition}
@@ -129,14 +140,13 @@ ${resumeText}
 
 Generate:
 
-15 Technical Interview Questions
-10 HR Interview Questions
+5 Technical Interview Questions
+3 HR Interview Questions
 
 IMPORTANT:
 If difficulty is Beginner:
 - ask basic questions
 - focus on fundamentals
-- easy concepts
 
 If difficulty is Intermediate:
 - ask practical industry questions
@@ -146,19 +156,15 @@ If difficulty is Advanced:
 - ask difficult optimization,
 architecture,
 system design,
-performance,
-and deep technical questions
+and performance questions
 
 Generate interview questions based on:
 - resume projects
 - resume skills
 - technologies used
-- work experience
 - achievements
 
-Prioritize personalized resume-based questions.
-
-Return response ONLY in valid JSON format like this:
+Return ONLY valid JSON in this format:
 
 {
   "technical_interview_questions": [
@@ -176,131 +182,270 @@ Return response ONLY in valid JSON format like this:
 }
 `;
 
-      // GENERATE AI RESPONSE
-      let text =
-        await OpenRouterModel(
-          InputPrompt
+        // =========================
+        // AI GENERATION
+        // =========================
+
+        const aiResponse =
+  await fetch(
+    "/api/generate-interview",
+    {
+
+      method: "POST",
+
+      headers: {
+        "Content-Type":
+          "application/json",
+      },
+
+      body: JSON.stringify({
+        prompt:
+          InputPrompt,
+      }),
+    }
+  );
+
+const aiData =
+  await aiResponse.json();
+
+console.log(
+  "AI API RESPONSE:",
+  aiData
+);
+
+if (
+
+  !aiResponse.ok ||
+
+  !aiData.success
+) {
+
+  throw new Error(
+
+    aiData?.message ||
+
+    "AI generation failed"
+  );
+}
+
+let text =
+  aiData.content;
+
+console.log(
+  "RAW AI RESPONSE:",
+  text
+);
+
+        // =========================
+        // CLEAN AI RESPONSE
+        // =========================
+
+        text = text
+          .replace(
+            /```json/g,
+            ""
+          )
+          .replace(
+            /```/g,
+            ""
+          )
+          .trim();
+
+        const jsonStart =
+          text.indexOf("{");
+
+        const jsonEnd =
+          text.lastIndexOf("}");
+
+        if (
+          jsonStart === -1 ||
+          jsonEnd === -1
+        ) {
+
+          console.log(
+            "INVALID AI RESPONSE:",
+            text
+          );
+
+          throw new Error(
+            "Invalid AI response format"
+          );
+        }
+
+        const cleanJson =
+          text.slice(
+            jsonStart,
+            jsonEnd + 1
+          );
+
+        console.log(
+          "CLEAN JSON:",
+          cleanJson
         );
 
-      console.log(
-        "RAW AI RESPONSE:",
-        text
-      );
+        // =========================
+        // PARSE JSON
+        // =========================
 
-      // CLEAN MARKDOWN
-      text = text
-        .replace(
-          /```json/g,
-          ""
-        )
-        .replace(
-          /```/g,
-          ""
-        )
-        .trim();
+        let parsedJson;
 
-      // EXTRACT VALID JSON ONLY
-      const jsonStart =
-        text.indexOf("{");
+        try {
 
-      const jsonEnd =
-        text.lastIndexOf("}");
+          parsedJson =
+            JSON.parse(
+              cleanJson
+            );
 
-      if (
-        jsonStart === -1 ||
-        jsonEnd === -1
-      ) {
+        } catch (parseError) {
 
-        throw new Error(
-          "Invalid AI response format"
+          console.log(
+            "JSON PARSE ERROR:",
+            parseError
+          );
+
+          console.log(
+            "BROKEN JSON:",
+            cleanJson
+          );
+
+          throw new Error(
+            "AI returned invalid JSON"
+          );
+        }
+
+        // =========================
+        // VALIDATE JSON STRUCTURE
+        // =========================
+
+        if (
+          !parsedJson
+            ?.technical_interview_questions
+        ) {
+
+          throw new Error(
+            "Invalid interview structure"
+          );
+        }
+
+        console.log(
+          "PARSED JSON:",
+          parsedJson
+        );
+
+        // =========================
+        // SAVE INTERVIEW
+        // =========================
+
+        const saveResponse =
+          await fetch(
+            "/api/create-interview",
+            {
+
+              method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body: JSON.stringify({
+
+                jsonMockResp:
+                  JSON.stringify([
+
+                    ...(parsedJson
+                      ?.technical_interview_questions || []),
+
+                    ...(parsedJson
+                      ?.hr_interview_questions || []),
+
+                  ]),
+
+                jobPosition:
+                  jobPosition.trim(),
+
+                jobDesc:
+                  `${companyName.trim()} | ${jobDesc.trim()}`,
+
+                jobExperience:
+                  jobExperience.trim(),
+
+                createdBy:
+                  user
+                    ?.primaryEmailAddress
+                    ?.emailAddress
+                    ?.trim()
+                    ?.toLowerCase() || "",
+              }),
+            }
+          );
+
+        const saveData =
+          await saveResponse.json();
+
+        console.log(
+          "SAVE RESPONSE:",
+          saveData
+        );
+
+        if (
+          !saveResponse.ok ||
+          !saveData.success
+        ) {
+
+          throw new Error(
+
+            saveData?.message ||
+
+            "Interview save failed"
+          );
+        }
+
+        // =========================
+        // SUCCESS
+        // =========================
+
+        alert(
+          "Interview Created Successfully 🚀"
+        );
+
+        localStorage.removeItem(
+          "resumeText"
+        );
+
+        // RESET
+
+        setOpen(false);
+
+        setJobPosition("");
+
+        setCompanyName("");
+
+        setJobDesc("");
+
+        setJobExperience("");
+
+      } catch (error) {
+
+        console.error(
+          "FULL ERROR:",
+          error
+        );
+
+        alert(
+
+          error?.message ||
+
+          "Something went wrong while generating interview"
         );
       }
 
-      const cleanJson =
-        text.slice(
-          jsonStart,
-          jsonEnd + 1
-        );
+      setLoading(false);
+    };
 
-      console.log(
-        "CLEAN JSON:",
-        cleanJson
-      );
-
-      // VALIDATE JSON
-      const parsedJson =
-        JSON.parse(cleanJson);
-
-      console.log(
-        "PARSED JSON:",
-        parsedJson
-      );
-
-      // SAVE TO DATABASE
-      const dbResult =
-        await db
-          .insert(MockInterview)
-          .values({
-
-            jsonMockResp:
-              JSON.stringify(
-                parsedJson
-              ),
-
-            jobPosition:
-              jobPosition,
-
-            jobDesc:
-              `${companyName} | ${jobDesc}`,
-
-            jobExperience:
-              jobExperience,
-
-            createdBy:
-              user
-                ?.primaryEmailAddress
-                ?.emailAddress ||
-              "unknown",
-          });
-
-      console.log(
-        "DB SAVED:",
-        dbResult
-      );
-
-      alert(
-        "Interview Created Successfully 🚀"
-      );
-      localStorage.removeItem(
-        "resumeText"
-      );
-
-      // RESET FORM
-      setOpen(false);
-
-      setJobPosition("");
-
-      setJobDesc("");
-
-      setJobExperience("");
-
-      setCompanyName("");
-
-    } catch (error) {
-
-      console.error(
-        "FULL ERROR:",
-        error
-      );
-
-      alert(
-        error?.message ||
-        "Something went wrong while generating interview"
-      );
-    }
-
-    setLoading(false);
-  };
+  // =========================
+  // UI
+  // =========================
 
   return (
 
@@ -374,6 +519,7 @@ Return response ONLY in valid JSON format like this:
           >
 
             {/* JOB ROLE */}
+
             <div>
 
               <label
@@ -430,6 +576,7 @@ Return response ONLY in valid JSON format like this:
             </div>
 
             {/* COMPANY */}
+
             <div>
 
               <label
@@ -470,6 +617,7 @@ Return response ONLY in valid JSON format like this:
             </div>
 
             {/* EXPERIENCE */}
+
             <div>
 
               <label
@@ -510,6 +658,7 @@ Return response ONLY in valid JSON format like this:
             </div>
 
             {/* TECH STACK */}
+
             <div>
 
               <label
@@ -550,6 +699,7 @@ Return response ONLY in valid JSON format like this:
             </div>
 
             {/* BUTTONS */}
+
             <div
               className="
                 flex

@@ -5,20 +5,13 @@ import React, {
   useState,
 } from "react";
 
-import Link from "next/link";
+import Link
+from "next/link";
 
 import {
   Sparkles,
   Clock3,
 } from "lucide-react";
-
-import {
-  db,
-} from "@/utils/db";
-
-import {
-  MockInterview,
-} from "@/utils/schema";
 
 import ResumeUpload
 from "./_components/ResumeUpload";
@@ -32,12 +25,15 @@ from "./_components/CreateInterviewModal";
 import Analytics
 from "./_components/Analytics";
 
-import { useUser } from "@clerk/nextjs";
+import {
+  useUser,
+} from "@clerk/nextjs";
 
 const Dashboard = () => {
 
-  const { user } = useUser();
- 
+  const { user } =
+    useUser();
+
   const [
     totalInterviews,
     setTotalInterviews,
@@ -48,93 +44,178 @@ const Dashboard = () => {
     setActivityData,
   ] = useState([]);
 
+  // =========================
+  // FETCH DASHBOARD DATA
+  // =========================
+
   useEffect(() => {
 
-  if (user) {
-    GetDashboardData();
-  }
+    if (user) {
 
-}, [user]);
+      GetDashboardData();
+    }
+
+  }, [user]);
 
   const GetDashboardData =
-    async () => {
+  async () => {
 
-      try {
+    try {
 
-        const interviews =
-  await db
-    .select()
-    .from(MockInterview)
-    .where(
-      eq(
-        MockInterview.createdBy,
-        user?.primaryEmailAddress?.emailAddress
-      )
-    );
-        console.log(
-          "DASHBOARD INTERVIEWS:",
-          interviews
+      const email =
+        user
+          ?.primaryEmailAddress
+          ?.emailAddress
+          ?.trim()
+          ?.toLowerCase();
+
+      if (!email) {
+        return;
+      }
+
+      const response =
+        await fetch(
+
+          `/api/dashboard-data?email=${encodeURIComponent(email)}`,
+
+          {
+            cache: "no-store",
+          }
         );
 
-        setTotalInterviews(
-          interviews.length
-        );
+      if (!response.ok) {
 
-        // BUILD REAL GRAPH
-        const graphData = [
-
-          {
-            week: "Week 1",
-            interviews:
-              Math.min(
-                interviews.length,
-                1
-              ),
-          },
-
-          {
-            week: "Week 2",
-            interviews:
-              Math.min(
-                interviews.length,
-                2
-              ),
-          },
-
-          {
-            week: "Week 3",
-            interviews:
-              Math.min(
-                interviews.length,
-                4
-              ),
-          },
-
-          {
-            week: "Week 4",
-            interviews:
-              interviews.length,
-          },
-        ];
-
-        setActivityData(
-          graphData
-        );
-
-      } catch (error) {
-
-        console.log(
-          "DASHBOARD ERROR:",
-          error
+        throw new Error(
+          "Failed to fetch dashboard data"
         );
       }
-    };
+
+      const data =
+        await response.json();
+
+      console.log(
+        "DASHBOARD DATA:",
+        data
+      );
+
+      if (!data.success) {
+
+        throw new Error(
+
+          data?.message ||
+
+          "Dashboard fetch failed"
+        );
+      }
+
+      const interviews =
+        Array.isArray(
+          data?.interviews
+        )
+
+          ? data.interviews
+
+          : [];
+
+      setTotalInterviews(
+        interviews.length
+      );
+
+      // =========================
+      // BUILD WEEKLY GRAPH
+      // =========================
+
+      const weeklyData = {
+        "Week 1": 0,
+        "Week 2": 0,
+        "Week 3": 0,
+        "Week 4": 0,
+      };
+
+      interviews.forEach(
+        (item) => {
+
+          if (!item.createdAt)
+            return;
+
+          const date =
+            new Date(
+              item.createdAt
+            );
+
+          const day =
+            date.getDate();
+
+          const week =
+            Math.ceil(day / 7);
+
+          if (week === 1)
+            weeklyData["Week 1"]++;
+
+          else if (week === 2)
+            weeklyData["Week 2"]++;
+
+          else if (week === 3)
+            weeklyData["Week 3"]++;
+
+          else
+            weeklyData["Week 4"]++;
+        }
+      );
+
+      setActivityData([
+
+        {
+          week: "Week 1",
+          interviews:
+            weeklyData["Week 1"],
+        },
+
+        {
+          week: "Week 2",
+          interviews:
+            weeklyData["Week 2"],
+        },
+
+        {
+          week: "Week 3",
+          interviews:
+            weeklyData["Week 3"],
+        },
+
+        {
+          week: "Week 4",
+          interviews:
+            weeklyData["Week 4"],
+        },
+      ]);
+
+    } catch (error) {
+
+      console.log(
+        "DASHBOARD ERROR:",
+        error
+      );
+
+      setTotalInterviews(0);
+
+      setActivityData([]);
+    }
+  }; 
+
+  // =========================
+  // GOAL %
+  // =========================
 
   const goalPercentage =
     Math.min(
       (totalInterviews / 5) * 100,
       100
     );
+
+  // =========================
+  // UI
+  // =========================
 
   return (
 
@@ -147,7 +228,8 @@ const Dashboard = () => {
       "
     >
 
-      {/* TOP SECTION */}
+      {/* TOP */}
+
       <div
         className="
           flex
@@ -194,6 +276,7 @@ const Dashboard = () => {
       </div>
 
       {/* HERO */}
+
       <div
         className="
           grid
@@ -204,7 +287,8 @@ const Dashboard = () => {
         "
       >
 
-        {/* AI ASSISTANT */}
+        {/* AI SECTION */}
+
         <div
           className="
             lg:col-span-2
@@ -262,6 +346,7 @@ const Dashboard = () => {
           </p>
 
           {/* BUTTONS */}
+
           <div
             className="
               flex
@@ -317,7 +402,8 @@ const Dashboard = () => {
 
         </div>
 
-        {/* WEEKLY GOAL */}
+        {/* GOAL */}
+
         <div
           className="
             bg-[#111827]
@@ -366,8 +452,7 @@ const Dashboard = () => {
           >
 
             Complete at least 5 AI mock interviews
-            this week to improve confidence
-            and technical performance.
+            this week.
 
           </p>
 
@@ -415,15 +500,20 @@ const Dashboard = () => {
         </div>
 
       </div>
-      
+
       {/* ANALYTICS */}
-        <div id="analytics"
-        className="mt-10">
+
+      <div
+        id="analytics"
+        className="mt-10"
+      >
+
         <Analytics />
 
-        </div>
+      </div>
 
       {/* RESUME */}
+
       <div
         id="resume"
         className="mt-10"
@@ -434,6 +524,7 @@ const Dashboard = () => {
       </div>
 
       {/* INTERVIEWS */}
+
       <div
         id="interviews"
         className="mt-10"

@@ -1,33 +1,47 @@
 export const RequestNotificationPermission =
   async () => {
 
-    if (
-      !("Notification" in window)
-    ) {
+    try {
+
+      if (
+        !("Notification" in window)
+      ) {
+
+        console.log(
+          "Browser does not support notifications"
+        );
+
+        return false;
+      }
+
+      // ALREADY GRANTED
+
+      if (
+        Notification.permission ===
+        "granted"
+      ) {
+
+        return true;
+      }
+
+      // REQUEST PERMISSION
+
+      const permission =
+        await Notification.requestPermission();
+
+      return (
+        permission === "granted"
+      );
+
+    } catch (error) {
 
       console.log(
-        "Browser does not support notifications"
+        "NOTIFICATION PERMISSION ERROR:",
+        error
       );
 
       return false;
     }
-
-    // ALREADY ALLOWED
-    if (
-      Notification.permission ===
-      "granted"
-    ) {
-
-      return true;
-    }
-
-    // ASK PERMISSION
-    const permission =
-      await Notification.requestPermission();
-
-    return (
-      permission === "granted"
-    );
   };
 
 // =========================
@@ -39,17 +53,60 @@ export const ShowNotification = (
   body
 ) => {
 
-  if (
-    Notification.permission ===
-    "granted"
-  ) {
+  try {
 
+    if (
+      !("Notification" in window)
+    ) {
+
+      console.log(
+        "Notifications not supported"
+      );
+
+      return;
+    }
+
+    if (
+      Notification.permission !==
+      "granted"
+    ) {
+
+      console.log(
+        "Notification permission not granted"
+      );
+
+      return;
+    }
+
+    setTimeout(() => {
+
+  const notification =
     new Notification(
       title,
       {
         body,
-        icon: "/logo.png",
       }
+    );
+
+  notification.onclick =
+    () => {
+
+      window.focus();
+
+      notification.close();
+    };
+
+}, 2000);
+
+    console.log(
+      "Notification shown successfully"
+    );
+
+  } catch (error) {
+
+    console.log(
+      "SHOW NOTIFICATION ERROR:",
+      error
     );
   }
 };

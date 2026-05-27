@@ -16,17 +16,9 @@ import {
   Brain,
 } from "lucide-react";
 
-import OpenRouterModel
-from "@/utils/OpenRouterAiModel";
 
 import { useRouter }
 from "next/navigation";
-
-import { db }
-from "@/utils/db";
-
-import { MockInterview }
-from "@/utils/schema";
 
 import { useUser }
 from "@clerk/nextjs";
@@ -62,6 +54,7 @@ const ResumeUpload = () => {
   // =========================
   // RESUME UPLOAD
   // =========================
+
   const onDrop =
     useCallback(
       async (
@@ -102,7 +95,7 @@ const ResumeUpload = () => {
             await response.json();
 
           console.log(
-            "PDF RESPONSE:",
+            "RESUME API RESPONSE:",
             data
           );
 
@@ -111,162 +104,22 @@ const ResumeUpload = () => {
           ) {
 
             throw new Error(
-              "PDF parsing failed"
+              data.error ||
+              "Resume analysis failed"
             );
           }
-
-          const resumeText =
-            data.text || "";
-
-          console.log(
-            "RESUME TEXT:",
-            resumeText
-          );
-
-          if (!resumeText) {
-
-            alert(
-              "Resume text extraction failed"
-            );
-
-            setLoading(false);
-
-            return;
-          }
-
-          // STORE LOCALLY
-          localStorage.setItem(
-            "resumeText",
-            resumeText
-          );
-
-          // ANALYSIS PROMPT
-          const prompt = `
-
-You are an AI resume analyzer.
-
-Analyze this resume carefully.
-
-Return ONLY valid JSON.
-
-NO markdown.
-NO explanation.
-NO extra text.
-
-Resume:
-${resumeText}
-
-Required JSON format:
-
-{
-  "jobRole":"string",
-  "skills":["skill1","skill2"],
-  "experience":"string",
-  "strengths":["strength1","strength2"],
-  "summary":"string"
-}
-`;
-
-          let aiResponse =
-            await OpenRouterModel(
-              prompt
-            );
-
-          console.log(
-            "RAW ANALYSIS:",
-            aiResponse
-          );
-
-          if (!aiResponse) {
-
-            throw new Error(
-              "Empty AI response"
-            );
-          }
-
-          aiResponse =
-            aiResponse
-              .replace(
-                /```json/g,
-                ""
-              )
-              .replace(
-                /```/g,
-                ""
-              )
-              .replace(
-                /<think>[\s\S]*?<\/think>/g,
-                ""
-              )
-              .trim();
-
-          const jsonStart =
-            aiResponse.indexOf("{");
-
-          const jsonEnd =
-            aiResponse.lastIndexOf("}");
 
           if (
-            jsonStart === -1 ||
-            jsonEnd === -1
+            !data.analysis
           ) {
 
             throw new Error(
-              "Invalid AI analysis JSON"
+              "No analysis returned"
             );
           }
-
-          const cleanJson =
-            aiResponse.slice(
-              jsonStart,
-              jsonEnd + 1
-            );
-
-          console.log(
-            "CLEAN ANALYSIS JSON:",
-            cleanJson
-          );
-
-          let parsedData;
-
-          try {
-
-            parsedData =
-              JSON.parse(
-                cleanJson
-              );
-
-          } catch (parseError) {
-
-            console.log(
-              "ANALYSIS PARSE ERROR:",
-              parseError
-            );
-
-            parsedData = {
-
-              jobRole:
-                "Software Developer",
-
-              skills: [],
-
-              experience:
-                "1 Year",
-
-              strengths: [],
-
-              summary:
-                "Resume analyzed successfully.",
-            };
-          }
-
-          console.log(
-            "PARSED ANALYSIS:",
-            parsedData
-          );
 
           setResumeAnalysis(
-            parsedData
+            data.analysis
           );
 
         } catch (error) {
@@ -277,19 +130,21 @@ Required JSON format:
           );
 
           alert(
-            "Failed to analyze resume"
+            "Resume analysis failed"
           );
+
+        } finally {
+
+          setLoading(false);
         }
-
-        setLoading(false);
-
       },
       []
     );
 
   // =========================
-  // START RESUME INTERVIEW
+  // START INTERVIEW
   // =========================
+
   const StartResumeInterview =
     async () => {
 
@@ -303,30 +158,32 @@ Required JSON format:
 
 You are an AI interview generator.
 
-Generate personalized interview questions.
+Generate personalized interview questions based on the candidate's resume analysis.
 
-Candidate Details:
+Candidate Analysis:
 
-Role:
+Suggested Role:
 ${resumeAnalysis?.jobRole}
 
-Skills:
+Tech Stack:
 ${resumeAnalysis?.skills?.join(", ")}
 
 Experience:
 ${resumeAnalysis?.experience}
 
-Summary:
-${resumeAnalysis?.summary}
+Resume Score:
+${resumeAnalysis?.score}
 
-IMPORTANT:
-- Ask resume-based questions
-- Ask project-based questions
-- Ask technical questions from skills
-- Ask HR questions from experience
+Strengths:
+${resumeAnalysis?.strengths?.join(", ")}
+
+Weaknesses:
+${resumeAnalysis?.weaknesses?.join(", ")}
+
+Suggestions:
+${resumeAnalysis?.suggestions?.join(", ")}
 
 Generate:
-
 5 Technical Questions
 3 HR Questions
 
@@ -349,159 +206,103 @@ Return ONLY valid JSON.
 }
 `;
 
-        let aiResp = "";
+        const aiResponse =
+  await fetch(
+    "/api/generate-interview",
+    {
 
-        try {
+      method: "POST",
 
-          aiResp =
-            await OpenRouterModel(
-              interviewPrompt
-            );
+      headers: {
+        "Content-Type":
+          "application/json",
+      },
 
-        } catch (error) {
+      body: JSON.stringify({
+        prompt:
+          interviewPrompt,
+      }),
+    }
+  );
 
-          console.log(
-            "OPENROUTER CALL ERROR:",
-            error
+const aiData =
+  await aiResponse.json();
+
+console.log(
+  "AI API RESPONSE:",
+  aiData
+);
+
+if (
+
+  !aiResponse.ok ||
+
+  !aiData.success
+) {
+
+  throw new Error(
+
+    aiData?.message ||
+
+    "AI generation failed"
+  );
+}
+
+let aiResp =
+  aiData.content;
+
+console.log(
+  "RAW INTERVIEW RESPONSE:",
+  aiResp
+);
+
+aiResp =
+  aiResp
+    .replace(
+      /```json/g,
+      ""
+    )
+    .replace(
+      /```/g,
+      ""
+    )
+    .replace(
+      /<think>[\s\S]*?<\/think>/g,
+      ""
+    )
+    .trim();
+     
+
+        const jsonStart =
+          aiResp.indexOf("{");
+
+        const jsonEnd =
+          aiResp.lastIndexOf("}");
+
+        if (
+          jsonStart === -1 ||
+          jsonEnd === -1
+        ) {
+
+          throw new Error(
+            "Invalid AI response"
           );
         }
 
+        const cleanJson =
+          aiResp.slice(
+            jsonStart,
+            jsonEnd + 1
+          );
+
         console.log(
-          "RAW INTERVIEW RESPONSE:",
-          aiResp
+          "CLEAN JSON:",
+          cleanJson
         );
 
-        // =========================
-        // FALLBACK QUESTIONS
-        // =========================
-        if (
-          !aiResp ||
-          aiResp.trim() === ""
-        ) {
-
-          aiResp =
-            JSON.stringify({
-
-              technical_interview_questions: [
-
-                {
-                  question:
-                    `Explain your experience with ${resumeAnalysis?.skills?.[0] || "React"}.`,
-
-                  answer:
-                    "Explain implementation details and projects.",
-                },
-
-                {
-                  question:
-                    "Describe your most challenging technical project.",
-
-                  answer:
-                    "Discuss architecture and debugging.",
-                },
-
-                {
-                  question:
-                    "How do you optimize application performance?",
-
-                  answer:
-                    "Explain optimization techniques.",
-                },
-
-                {
-                  question:
-                    "Explain a difficult bug you solved recently.",
-
-                  answer:
-                    "Describe debugging process.",
-                },
-
-                {
-                  question:
-                    "Which technology stack do you prefer and why?",
-
-                  answer:
-                    "Discuss preferred tools.",
-                },
-              ],
-
-              hr_interview_questions: [
-
-                {
-                  question:
-                    "Tell me about yourself.",
-
-                  answer:
-                    "Introduce yourself professionally.",
-                },
-
-                {
-                  question:
-                    "Why should we hire you?",
-
-                  answer:
-                    "Explain your strengths.",
-                },
-
-                {
-                  question:
-                    "What are your future goals?",
-
-                  answer:
-                    "Discuss future plans.",
-                },
-              ],
-            });
-        }
-
-        aiResp = aiResp
-          .replace(
-            /```json/g,
-            ""
-          )
-          .replace(
-            /```/g,
-            ""
-          )
-          .replace(
-            /<think>[\s\S]*?<\/think>/g,
-            ""
-          )
-          .trim();
-
-        // =========================
-        // SAFE JSON PARSE
-        // =========================
         let parsedJson;
 
         try {
-
-          const jsonStart =
-            aiResp.indexOf("{");
-
-          const jsonEnd =
-            aiResp.lastIndexOf("}");
-
-          if (
-            jsonStart === -1 ||
-            jsonEnd === -1
-          ) {
-
-            throw new Error(
-              "Invalid JSON structure"
-            );
-          }
-
-          const cleanJson =
-            aiResp.slice(
-              jsonStart,
-              jsonEnd + 1
-            );
-
-          console.log(
-            "CLEAN JSON:",
-            cleanJson
-          );
 
           parsedJson =
             JSON.parse(
@@ -511,82 +312,20 @@ Return ONLY valid JSON.
         } catch (parseError) {
 
           console.log(
-            "JSON PARSE FAILED:",
+            "JSON PARSE ERROR:",
             parseError
           );
 
-          parsedJson = {
+          console.log(
+            "FAILED JSON:",
+            cleanJson
+          );
 
-            technical_interview_questions: [
+          alert(
+            "AI returned invalid interview JSON"
+          );
 
-              {
-                question:
-                  `Explain your experience with ${resumeAnalysis?.skills?.[0] || "React"}.`,
-
-                answer:
-                  "Explain implementation details and projects.",
-              },
-
-              {
-                question:
-                  "Describe your most challenging technical project.",
-
-                answer:
-                  "Discuss architecture and debugging.",
-              },
-
-              {
-                question:
-                  "How do you optimize performance?",
-
-                answer:
-                  "Explain optimization techniques.",
-              },
-
-              {
-                question:
-                  "Explain a bug you solved recently.",
-
-                answer:
-                  "Describe debugging process.",
-              },
-
-              {
-                question:
-                  "Which technology stack do you prefer and why?",
-
-                answer:
-                  "Discuss preferred tools.",
-              },
-            ],
-
-            hr_interview_questions: [
-
-              {
-                question:
-                  "Tell me about yourself.",
-
-                answer:
-                  "Introduce yourself professionally.",
-              },
-
-              {
-                question:
-                  "Why should we hire you?",
-
-                answer:
-                  "Explain your strengths.",
-              },
-
-              {
-                question:
-                  "What are your future goals?",
-
-                answer:
-                  "Discuss future plans.",
-              },
-            ],
-          };
+          return;
         }
 
         console.log(
@@ -595,102 +334,110 @@ Return ONLY valid JSON.
         );
 
         // =========================
-        // DATABASE INSERT
+        // SAVE INTERVIEW
         // =========================
-        await db
-  .insert(MockInterview)
-  .values({
 
-    jsonMockResp:
-      JSON.stringify(
-        parsedJson
-      ),
+        const saveResponse =
+          await fetch(
+            "/api/create-interview",
+            {
 
-    jobPosition:
-      resumeAnalysis?.jobRole ||
-      "Software Developer",
+              method: "POST",
 
-    jobDesc:
-      resumeAnalysis?.summary ||
-      "Resume Based Interview",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
 
-    jobExperience:
-      String(
-        resumeAnalysis?.experience || "1"
-      ),
+              body: JSON.stringify({
 
-    createdBy:
-      user
-        ?.primaryEmailAddress
-        ?.emailAddress || "",
-  });
+                jsonMockResp:
+                  JSON.stringify(
+                    parsedJson
+                  ),
 
-console.log(
-  "Interview inserted successfully"
-);
+                jobPosition:
+                  resumeAnalysis?.jobRole ||
 
-// GET LATEST INSERTED INTERVIEW
-const latestInterview =
-  await db
-    .select()
-    .from(MockInterview);
+                  "Software Developer",
 
-const lastInterview =
-  latestInterview[
-    latestInterview.length - 1
-  ];
+                jobDesc:
+                  resumeAnalysis
+                    ?.skills
+                    ?.join(", ") ||
 
-console.log(
-  "LAST INTERVIEW:",
-  lastInterview
-);
+                  "React, Node.js",
 
-if (!lastInterview?.id) {
+                jobExperience:
+                  String(
+                    resumeAnalysis?.experience ||
+                    "Fresher"
+                  ),
 
-  alert(
-    "Interview ID not found"
-  );
+                createdBy:
+                  user
+                    ?.primaryEmailAddress
+                    ?.emailAddress
+                    ?.trim()
+                    ?.toLowerCase() || "",
+              }),
+            }
+          );
 
-  return;
-}
+        const savedData =
+          await saveResponse.json();
 
-// REDIRECT
-router.push(
-  `/dashboard/interview/${lastInterview.id}/start`
-);
+        console.log(
+          "CREATE INTERVIEW RESPONSE:",
+          savedData
+        );
+
+        if (
+          !savedData.success
+        ) {
+
+          throw new Error(
+            "Interview creation failed"
+          );
+        }
+
+        router.push(
+
+          `/dashboard/interview/${savedData.interviewId}`
+
+        );
 
       } catch (error) {
 
-  console.log(
-    "FULL INTERVIEW ERROR:",
-    error
-  );
+        console.log(
+          "FULL INTERVIEW ERROR:",
+          error
+        );
 
-  console.log(
-    "ERROR MESSAGE:",
-    error?.message
-  );
+        alert(
+          "Failed to generate interview"
+        );
 
-  console.log(
-    "ERROR STACK:",
-    error?.stack
-  );
+      } finally {
 
-  alert(
-    error?.message ||
-    "Failed to generate interview"
-  );
-}
-
-      setLoadingInterview(
-        false
-      );
+        setLoadingInterview(
+          false
+        );
+      }
     };
 
+  // =========================
+  // DROPZONE
+  // =========================
+
   const {
+
     getRootProps,
+
     getInputProps,
+
     isDragActive,
+
   } = useDropzone({
 
     onDrop,
@@ -715,6 +462,7 @@ router.push(
     ">
 
       {/* HEADER */}
+
       <div className="
         flex
         items-center
@@ -752,7 +500,7 @@ router.push(
             text-gray-400
           ">
 
-            AI-powered resume analysis and interview preparation
+            AI-powered resume interview generation
 
           </p>
 
@@ -761,6 +509,7 @@ router.push(
       </div>
 
       {/* DROPZONE */}
+
       <div
         {...getRootProps()}
         className={`
@@ -823,7 +572,8 @@ router.push(
 
       </div>
 
-      {/* FILE INFO */}
+      {/* FILE */}
+
       {
         fileName && (
 
@@ -845,33 +595,21 @@ router.push(
               "
             />
 
-            <div>
+            <p className="
+              text-white
+              font-medium
+            ">
 
-              <p className="
-                text-white
-                font-medium
-              ">
+              {fileName}
 
-                {fileName}
-
-              </p>
-
-              <p className="
-                text-sm
-                text-gray-400
-              ">
-
-                Resume uploaded successfully
-
-              </p>
-
-            </div>
+            </p>
 
           </div>
         )
       }
 
       {/* ANALYSIS */}
+
       {
         resumeAnalysis && (
 
@@ -888,7 +626,7 @@ router.push(
               flex
               items-center
               gap-3
-              mb-5
+              mb-6
             ">
 
               <Brain
@@ -909,82 +647,83 @@ router.push(
 
             </div>
 
-            <div className="
-              space-y-5
-            ">
+            {/* SCORE */}
 
-              <div>
+            <div className="mb-6">
 
-                <h3 className="
-                  text-gray-400
-                  text-sm
-                ">
+              <h3 className="
+                text-blue-400
+                font-semibold
+                mb-2
+              ">
 
-                  Suggested Job Role
+                Resume Score
 
-                </h3>
+              </h3>
 
-                <p className="
-                  text-white
-                  text-lg
-                  font-semibold
-                  mt-1
-                ">
+              <p className="
+                text-4xl
+                font-bold
+                text-white
+              ">
 
-                  {
-                    resumeAnalysis.jobRole
-                  }
+                {resumeAnalysis?.score}/100
 
-                </p>
+              </p>
 
-              </div>
+            </div>
 
-              <div>
+            {/* ROLE */}
 
-                <h3 className="
-                  text-gray-400
-                  text-sm
-                ">
+            <div className="mb-6">
 
-                  Estimated Experience
+              <h3 className="
+                text-cyan-400
+                font-semibold
+                mb-2
+              ">
 
-                </h3>
+                Suggested Role
 
-                <p className="
-                  text-white
-                  text-lg
-                  font-semibold
-                  mt-1
-                ">
+              </h3>
 
-                  {
-                    resumeAnalysis.experience
-                  }
+              <p className="
+                text-gray-300
+              ">
 
-                </p>
+                {
+                  resumeAnalysis?.jobRole ||
+                  "Software Developer"
+                }
 
-              </div>
+              </p>
 
-              <div>
+            </div>
 
-                <h3 className="
-                  text-gray-400
-                  text-sm
-                  mb-2
-                ">
+            {/* TECH STACK */}
 
-                  Skills
+            <div className="mb-6">
 
-                </h3>
+              <h3 className="
+                text-cyan-400
+                font-semibold
+                mb-2
+              ">
 
-                <div className="
-                  flex
-                  flex-wrap
-                  gap-3
-                ">
+                Tech Stack
 
-                  {
-                    resumeAnalysis.skills?.map(
+              </h3>
+
+              <div className="
+                flex
+                flex-wrap
+                gap-2
+              ">
+
+                {
+                  resumeAnalysis
+                    ?.skills
+                    ?.map(
                       (
                         skill,
                         index
@@ -993,11 +732,11 @@ router.push(
                         <span
                           key={index}
                           className="
-                            bg-blue-500/20
-                            text-blue-300
-                            px-4
-                            py-2
-                            rounded-full
+                            bg-cyan-500/20
+                            text-cyan-300
+                            px-3
+                            py-1
+                            rounded-xl
                             text-sm
                           "
                         >
@@ -1007,67 +746,190 @@ router.push(
                         </span>
                       )
                     )
-                  }
-
-                </div>
+                }
 
               </div>
-
-              <div>
-
-                <h3 className="
-                  text-gray-400
-                  text-sm
-                ">
-
-                  AI Summary
-
-                </h3>
-
-                <p className="
-                  text-gray-300
-                  leading-7
-                  mt-2
-                ">
-
-                  {
-                    resumeAnalysis.summary
-                  }
-
-                </p>
-
-              </div>
-
-              {/* START INTERVIEW BUTTON */}
-              <button
-                onClick={
-                  StartResumeInterview
-                }
-                disabled={
-                  loadingInterview
-                }
-                className="
-                  mt-6
-                  bg-blue-600
-                  hover:bg-blue-700
-                  px-6
-                  py-3
-                  rounded-2xl
-                  text-white
-                  font-semibold
-                  transition-all
-                "
-              >
-
-                {
-                  loadingInterview
-                    ? "Generating Interview..."
-                    : "Start Resume Interview"
-                }
-
-              </button>
 
             </div>
+
+            {/* EXPERIENCE */}
+
+            <div className="mb-6">
+
+              <h3 className="
+                text-cyan-400
+                font-semibold
+                mb-2
+              ">
+
+                Experience
+
+              </h3>
+
+              <p className="
+                text-gray-300
+              ">
+
+                {
+                  resumeAnalysis?.experience ||
+                  "Fresher"
+                }
+
+              </p>
+
+            </div>
+
+            {/* STRENGTHS */}
+
+            <div className="mb-6">
+
+              <h3 className="
+                text-green-400
+                font-semibold
+                mb-3
+              ">
+
+                Strengths
+
+              </h3>
+
+              <ul className="
+                list-disc
+                ml-5
+                text-gray-300
+                space-y-2
+              ">
+
+                {
+                  resumeAnalysis
+                    ?.strengths
+                    ?.map(
+                      (
+                        item,
+                        index
+                      ) => (
+
+                        <li key={index}>
+                          {item}
+                        </li>
+                      )
+                    )
+                }
+
+              </ul>
+
+            </div>
+
+            {/* WEAKNESSES */}
+
+            <div className="mb-6">
+
+              <h3 className="
+                text-red-400
+                font-semibold
+                mb-3
+              ">
+
+                Weaknesses
+
+              </h3>
+
+              <ul className="
+                list-disc
+                ml-5
+                text-gray-300
+                space-y-2
+              ">
+
+                {
+                  resumeAnalysis
+                    ?.weaknesses
+                    ?.map(
+                      (
+                        item,
+                        index
+                      ) => (
+
+                        <li key={index}>
+                          {item}
+                        </li>
+                      )
+                    )
+                }
+
+              </ul>
+
+            </div>
+
+            {/* SUGGESTIONS */}
+
+            <div className="mb-6">
+
+              <h3 className="
+                text-yellow-400
+                font-semibold
+                mb-3
+              ">
+
+                Suggestions
+
+              </h3>
+
+              <ul className="
+                list-disc
+                ml-5
+                text-gray-300
+                space-y-2
+              ">
+
+                {
+                  resumeAnalysis
+                    ?.suggestions
+                    ?.map(
+                      (
+                        item,
+                        index
+                      ) => (
+
+                        <li key={index}>
+                          {item}
+                        </li>
+                      )
+                    )
+                }
+
+              </ul>
+
+            </div>
+
+            {/* BUTTON */}
+
+            <button
+              onClick={
+                StartResumeInterview
+              }
+              disabled={
+                loadingInterview
+              }
+              className="
+                mt-6
+                bg-blue-600
+                hover:bg-blue-700
+                px-6
+                py-3
+                rounded-2xl
+                text-white
+                font-semibold
+              "
+            >
+
+              {
+                loadingInterview
+                  ? "Generating Interview..."
+                  : "Start Resume Interview"
+              }
+
+            </button>
 
           </div>
         )

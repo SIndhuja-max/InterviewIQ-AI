@@ -6,134 +6,261 @@ import React, {
 } from "react";
 
 import {
-  db,
-} from "@/utils/db";
-
-import {
-  UserAnswer,
-} from "@/utils/schema";
-
-import {
-  desc,
-} from "drizzle-orm";
-
-import {
   useUser,
 } from "@clerk/nextjs";
 
 const FeedbackPage = () => {
 
-  const { user } = useUser();
+  const { user } =
+    useUser();
 
-  const [feedbacks, setFeedbacks] =
-    useState([]);
+  const [
+    feedbacks,
+    setFeedbacks,
+  ] = useState([]);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  // =========================
+  // FETCH FEEDBACKS
+  // =========================
 
   useEffect(() => {
 
     if (user) {
+
       GetAllFeedback();
     }
 
   }, [user]);
 
-  const GetAllFeedback = async () => {
+  const GetAllFeedback =
+    async () => {
 
-    try {
+      try {
 
-      const result =
-        await db
-          .select()
-          .from(UserAnswer)
-          .orderBy(
-            desc(UserAnswer.id)
+        const response =
+          await fetch(
+
+            `/api/all-feedback?email=${user?.primaryEmailAddress?.emailAddress}`
+
           );
 
-      setFeedbacks(result);
+        const result =
+          await response.json();
 
-    } catch (error) {
+        console.log(
+          "ALL FEEDBACKS:",
+          result
+        );
 
-      console.log(
-        "Feedback Fetch Error:",
-        error
-      );
-    }
-  };
+        setFeedbacks(
+          result
+        );
+
+      } catch (error) {
+
+        console.log(
+          "Feedback Fetch Error:",
+          error
+        );
+      }
+
+      setLoading(false);
+    };
+
+  // =========================
+  // LOADING
+  // =========================
+
+  if (loading) {
+
+    return (
+
+      <div className="
+        p-10
+        text-white
+      ">
+
+        Loading feedback...
+
+      </div>
+    );
+  }
+
+  // =========================
+  // UI
+  // =========================
 
   return (
 
-    <div className="p-10 text-white">
+    <div className="
+      p-10
+      text-white
+    ">
 
-      <h1 className="text-4xl font-bold mb-8">
+      <h1 className="
+        text-4xl
+        font-bold
+        mb-8
+      ">
 
         AI Feedback History
 
       </h1>
 
-      <div className="grid gap-6">
+      <div className="
+        grid
+        gap-6
+      ">
 
-        {feedbacks.map(
-          (item, index) => (
+        {
+          feedbacks.length > 0 ? (
 
-            <div
-              key={index}
-              className="bg-[#111827] border border-gray-800 rounded-2xl p-6"
-            >
+            feedbacks.map(
+              (
+                item,
+                index
+              ) => (
 
-              <div className="flex items-center justify-between mb-4">
+                <div
+                  key={index}
+                  className="
+                    bg-[#111827]
+                    border
+                    border-gray-800
+                    rounded-2xl
+                    p-6
+                  "
+                >
 
-                <h2 className="text-xl font-semibold">
+                  {/* TOP */}
 
-                  {item.question}
+                  <div className="
+                    flex
+                    items-center
+                    justify-between
+                    mb-4
+                  ">
 
-                </h2>
+                    <h2 className="
+                      text-xl
+                      font-semibold
+                    ">
 
-                <span className="bg-blue-500/20 text-blue-400 px-4 py-2 rounded-xl">
+                      {item.question}
 
-                  {item.rating}/10
+                    </h2>
 
-                </span>
+                    <span className="
+                      bg-blue-500/20
+                      text-blue-400
+                      px-4
+                      py-2
+                      rounded-xl
+                    ">
 
-              </div>
+                      {item.rating}/10
 
-              <div className="space-y-4">
+                    </span>
 
-                <div>
+                  </div>
 
-                  <h3 className="text-yellow-400 font-medium mb-1">
+                  {/* CONTENT */}
 
-                    Your Answer
+                  <div className="
+                    space-y-4
+                  ">
 
-                  </h3>
+                    {/* ANSWER */}
 
-                  <p className="text-gray-300">
+                    <div>
 
-                    {item.userAns}
+                      <h3 className="
+                        text-yellow-400
+                        font-medium
+                        mb-1
+                      ">
 
-                  </p>
+                        Your Answer
+
+                      </h3>
+
+                      <p className="
+                        text-gray-300
+                      ">
+
+                        {item.userAns}
+
+                      </p>
+
+                    </div>
+
+                    {/* FEEDBACK */}
+
+                    <div>
+
+                      <h3 className="
+                        text-green-400
+                        font-medium
+                        mb-1
+                      ">
+
+                        AI Feedback
+
+                      </h3>
+
+                      <p className="
+                        text-gray-300
+                      ">
+
+                        {item.feedback}
+
+                      </p>
+
+                    </div>
+
+                  </div>
 
                 </div>
+              )
+            )
 
-                <div>
+          ) : (
 
-                  <h3 className="text-green-400 font-medium mb-1">
+            <div className="
+              bg-[#111827]
+              border
+              border-gray-800
+              rounded-2xl
+              p-10
+              text-center
+            ">
 
-                    AI Feedback
+              <h2 className="
+                text-2xl
+                font-bold
+              ">
 
-                  </h3>
+                No Feedback Found
 
-                  <p className="text-gray-300">
+              </h2>
 
-                    {item.feedback}
+              <p className="
+                text-gray-400
+                mt-3
+              ">
 
-                  </p>
+                Complete interviews to see feedback history.
 
-                </div>
-
-              </div>
+              </p>
 
             </div>
           )
-        )}
+        }
 
       </div>
 

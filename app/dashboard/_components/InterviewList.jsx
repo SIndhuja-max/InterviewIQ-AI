@@ -5,24 +5,17 @@ import React, {
   useState,
 } from "react";
 
-import { db }
-from "@/utils/db";
-
-import {
-  MockInterview,
-} from "@/utils/schema";
-
 import InterviewCard
 from "./InterviewCard";
 
-import { eq, desc } from "drizzle-orm";
-
-import { useUser }
-from "@clerk/nextjs";
+import {
+  useUser,
+} from "@clerk/nextjs";
 
 const InterviewList = () => {
 
-  const { user } = useUser();
+  const { user } =
+    useUser();
 
   const [
     interviewList,
@@ -34,52 +27,104 @@ const InterviewList = () => {
     setLoading,
   ] = useState(true);
 
+  // =========================
+  // FETCH INTERVIEWS
+  // =========================
+
   useEffect(() => {
 
-  if (user) {
-    GetInterviewList();
-  }
+    if (user) {
 
-}, [user]);
+      GetInterviewList();
+    }
+
+  }, [user]);
 
   const GetInterviewList =
-    async () => {
+  async () => {
 
-      try {
+    try {
 
-        const result =
-  await db
-    .select()
-    .from(MockInterview)
-    .where(
-      eq(
-        MockInterview.createdBy,
-        user?.primaryEmailAddress?.emailAddress
-      )
-    )
-    .orderBy(
-      desc(MockInterview.id)
-    );
+      setLoading(true);
 
-        console.log(
-          "Fetched Interviews:",
-          result
+      const email =
+        user
+          ?.primaryEmailAddress
+          ?.emailAddress
+          ?.trim()
+          ?.toLowerCase();
+
+      if (!email) {
+
+        setInterviewList([]);
+
+        return;
+      }
+
+      const response =
+        await fetch(
+
+          `/api/dashboard-data?email=${encodeURIComponent(email)}`,
+
+          {
+            cache: "no-store",
+          }
         );
 
-        setInterviewList(
-          result
-        );
+      if (!response.ok) {
 
-      } catch (error) {
-
-        console.log(
-          "Fetch Error:",
-          error
+        throw new Error(
+          "Failed to fetch interviews"
         );
       }
 
+      const result =
+        await response.json();
+
+      console.log(
+        "FETCHED INTERVIEWS:",
+        result
+      );
+
+      if (!result.success) {
+
+        throw new Error(
+
+          result?.message ||
+
+          "Interview fetch failed"
+        );
+      }
+
+      setInterviewList(
+
+        Array.isArray(
+          result?.interviews
+        )
+
+          ? result.interviews
+
+          : []
+      );
+
+    } catch (error) {
+
+      console.log(
+        "FETCH ERROR:",
+        error
+      );
+
+      setInterviewList([]);
+
+    } finally {
+
       setLoading(false);
-    };
+    }
+  };
+
+  // =========================
+  // LOADING
+  // =========================
 
   if (loading) {
 
@@ -96,11 +141,16 @@ const InterviewList = () => {
     );
   }
 
+  // =========================
+  // UI
+  // =========================
+
   return (
 
     <div className="mt-10">
 
       {/* HEADER */}
+
       <div
         className="
           flex
@@ -140,77 +190,80 @@ const InterviewList = () => {
       </div>
 
       {/* GRID */}
+
       {
-        interviewList?.length > 0
-          ? (
+        interviewList?.length > 0 ? (
 
-            <div
-              className="
-                grid
-                grid-cols-1
-                md:grid-cols-2
-                xl:grid-cols-3
-                gap-6
-              "
-            >
+          <div
+            className="
+              grid
+              grid-cols-1
+              md:grid-cols-2
+              xl:grid-cols-3
+              gap-6
+            "
+          >
 
-              {
-                interviewList.map(
-                  (
-                    interview,
-                    index
-                  ) => (
+            {
+              interviewList.map(
+                (
+                  interview,
+                  index
+                ) => (
 
-                    <InterviewCard
-                      key={index}
-                      interview={
-                        interview
-                      }
-                    />
-                  )
+                  <InterviewCard
+                    key={
+                      interview?.id ||
+                      index
+                    }
+                    interview={
+                      interview
+                    }
+                  />
                 )
-              }
+              )
+            }
 
-            </div>
+          </div>
 
-          ) : (
+        ) : (
 
-            <div
+          <div
+            className="
+              bg-[#111827]
+              border
+              border-gray-800
+              rounded-3xl
+              p-10
+              text-center
+            "
+          >
+
+            <h2
               className="
-                bg-[#111827]
-                border
-                border-gray-800
-                rounded-3xl
-                p-10
-                text-center
+                text-2xl
+                font-bold
+                text-white
               "
             >
 
-              <h2
-                className="
-                  text-2xl
-                  font-bold
-                  text-white
-                "
-              >
+              No Interviews Yet
 
-                No Interviews Yet
+            </h2>
 
-              </h2>
+            <p
+              className="
+                text-gray-400
+                mt-3
+              "
+            >
 
-              <p
-                className="
-                  text-gray-400
-                  mt-3
-                "
-              >
+              Create your first AI interview to begin practicing.
 
-                Create your first AI interview to begin practicing.
+            </p>
 
-              </p>
-
-            </div>
-          )
+          </div>
+        )
       }
 
     </div>

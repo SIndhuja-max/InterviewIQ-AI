@@ -5,23 +5,11 @@ import React, {
   useState,
 } from "react";
 
-import Link from "next/link";
+import Link
+from "next/link";
 
-import {
-  eq,
-} from "drizzle-orm";
-
-import {
-  Button,
-} from "@/components/ui/button";
-
-import {
-  db,
-} from "@/utils/db";
-
-import {
-  MockInterview,
-} from "@/utils/schema";
+import { Button }
+from "@/components/ui/button";
 
 import QuestionsSection
 from "./_components/QuestionsSection";
@@ -29,13 +17,16 @@ from "./_components/QuestionsSection";
 import RecordAnswerSection
 from "./_components/RecordAnswerSection";
 
-import { useUser }
-from "@clerk/nextjs";
+import {
+  useUser,
+} from "@clerk/nextjs";
 
 const StartInterview = ({
   params,
 }) => {
-  const { user } = useUser();
+
+  const { user } =
+    useUser();
 
   const [
     interViewData,
@@ -52,79 +43,60 @@ const StartInterview = ({
     setActiveQuestionIndex,
   ] = useState(0);
 
+  // =========================
+  // FETCH INTERVIEW
+  // =========================
+
   useEffect(() => {
 
-  if (
-    params?.interviewId &&
-    user
-  ) {
+    if (
+      params?.interviewId &&
+      user
+    ) {
 
-    GetInterviewDetails();
+      GetInterviewDetails();
+    }
 
-  }
-
-}, [
-  params?.interviewId,
-  user
-]);
+  }, [
+    params?.interviewId,
+    user,
+  ]);
 
   const GetInterviewDetails =
     async () => {
 
       try {
 
-        const result =
-          await db
-            .select()
-            .from(
-              MockInterview
-            )
-            .where(
-              eq(
-                MockInterview.id,
-                Number(
-                  params.interviewId
-                )
-              )
-            );
+        const response =
+          await fetch(
+
+            `/api/interview-details?id=${params.interviewId}&email=${user?.primaryEmailAddress?.emailAddress}`
+
+          );
+
+        const data =
+          await response.json();
 
         console.log(
-          "DB RESULT:",
-          result
+          "INTERVIEW API:",
+          data
         );
 
-        if (
-          !result ||
-          result.length === 0
-        ) {
+        if (!data.success) {
 
           console.log(
-            "Interview not found"
+            "Unauthorized interview access"
           );
 
           return;
         }
 
         const interview =
-  result.find(
-    (item) =>
-      item.createdBy ===
-      user?.primaryEmailAddress
-        ?.emailAddress
-  );
+          data.interview;
 
-if (!interview) {
-
-  console.log(
-    "Unauthorized interview access"
-  );
-
-  return;
-}
-
-setInterviewData(
-  interview
-);
+        setInterviewData(
+          interview
+        );
 
         console.log(
           "RAW JSON:",
@@ -171,6 +143,7 @@ setInterviewData(
         let questions = [];
 
         // CASE 1
+
         if (
           Array.isArray(
             parsedData
@@ -182,9 +155,13 @@ setInterviewData(
         }
 
         // CASE 2
+
         else if (
+
           parsedData?.technical_interview_questions ||
+
           parsedData?.hr_interview_questions
+
         ) {
 
           questions = [
@@ -202,6 +179,7 @@ setInterviewData(
         }
 
         // CASE 3
+
         else if (
           parsedData?.questions
         ) {
@@ -211,6 +189,7 @@ setInterviewData(
         }
 
         // CASE 4
+
         else {
 
           questions =
@@ -228,9 +207,7 @@ setInterviewData(
           questions
         );
 
-      } catch (
-        error
-      ) {
+      } catch (error) {
 
         console.log(
           "FETCH ERROR:",
@@ -238,6 +215,10 @@ setInterviewData(
         );
       }
     };
+
+  // =========================
+  // UI
+  // =========================
 
   return (
 
@@ -251,6 +232,7 @@ setInterviewData(
       ">
 
         {/* QUESTIONS */}
+
         <QuestionsSection
           mockInterviewQuestion={
             mockInterviewQuestion
@@ -264,6 +246,7 @@ setInterviewData(
         />
 
         {/* RECORD */}
+
         <RecordAnswerSection
           mockInterviewQuestion={
             mockInterviewQuestion
@@ -279,6 +262,7 @@ setInterviewData(
       </div>
 
       {/* NAVIGATION */}
+
       <div className="
         flex
         justify-end
@@ -296,7 +280,9 @@ setInterviewData(
                 )
               }
             >
+
               Previous Question
+
             </Button>
           )
         }
@@ -312,7 +298,9 @@ setInterviewData(
                 )
               }
             >
+
               Next Question
+
             </Button>
           )
         }
@@ -328,7 +316,9 @@ setInterviewData(
             >
 
               <Button>
+
                 End Interview
+
               </Button>
 
             </Link>

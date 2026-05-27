@@ -16,17 +16,6 @@ import {
   useUser,
 } from "@clerk/nextjs";
 
-import { db }
-from "@/utils/db";
-
-import {
-  UserSettings,
-} from "@/utils/schema";
-
-import {
-  eq,
-} from "drizzle-orm";
-
 import {
   RequestNotificationPermission,
   ShowNotification,
@@ -59,7 +48,10 @@ const SettingsPage = () => {
     setLoading,
   ] = useState(true);
 
+  // =========================
   // FETCH SETTINGS
+  // =========================
+
   useEffect(() => {
 
     if (user) {
@@ -74,67 +66,44 @@ const SettingsPage = () => {
 
       try {
 
-        const email =
-          user
-            ?.primaryEmailAddress
-            ?.emailAddress;
+        const response =
+          await fetch(
+
+            `/api/user-settings?email=${user?.primaryEmailAddress?.emailAddress}`
+
+          );
 
         const result =
-          await db
-            .select()
-            .from(
-              UserSettings
-            )
-            .where(
-              eq(
-                UserSettings.userEmail,
-                email
-              )
-            );
+          await response.json();
+
+        console.log(
+          "SETTINGS:",
+          result
+        );
 
         if (
-          result.length > 0
-        ) {
+  result?.success &&
+  result?.settings
+) {
 
-          const settings =
-            result[0];
+  setDifficulty(
+    result.settings.difficulty
+  );
 
-          setDifficulty(
-            settings.difficulty
-          );
+  setNotifications(
 
-          setNotifications(
-            settings.notifications ===
-              "enabled"
-          );
+    result.settings.notifications ===
+    "enabled"
 
-          setAiFeedback(
-            settings.aiFeedback ===
-              "enabled"
-          );
+  );
 
-        } else {
+  setAiFeedback(
 
-          await db
-            .insert(
-              UserSettings
-            )
-            .values({
+    result.settings.aiFeedback ===
+    "enabled"
 
-              userEmail:
-                email,
-
-              difficulty:
-                "Intermediate",
-
-              notifications:
-                "enabled",
-
-              aiFeedback:
-                "enabled",
-            });
-        }
-
+  );
+}
       } catch (error) {
 
         console.log(
@@ -148,7 +117,10 @@ const SettingsPage = () => {
       }
     };
 
+  // =========================
   // SAVE SETTINGS
+  // =========================
+
   const SaveSettings =
     async (
       updatedValues
@@ -156,24 +128,28 @@ const SettingsPage = () => {
 
       try {
 
-        const email =
-          user
-            ?.primaryEmailAddress
-            ?.emailAddress;
+        await fetch(
+          "/api/user-settings",
+          {
 
-        await db
-          .update(
-            UserSettings
-          )
-          .set(
-            updatedValues
-          )
-          .where(
-            eq(
-              UserSettings.userEmail,
-              email
-            )
-          );
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body: JSON.stringify({
+
+              email:
+                user
+                  ?.primaryEmailAddress
+                  ?.emailAddress,
+
+              ...updatedValues,
+            }),
+          }
+        );
 
       } catch (error) {
 
@@ -184,59 +160,73 @@ const SettingsPage = () => {
       }
     };
 
+  // =========================
   // DIFFICULTY
+  // =========================
+
   const HandleDifficulty =
     async (value) => {
 
       setDifficulty(value);
 
       await SaveSettings({
-        difficulty:
-          value,
+
+        difficulty: value,
       });
     };
 
+  // =========================
   // NOTIFICATIONS
+  // =========================
+
   const ToggleNotifications =
-  async () => {
+    async () => {
 
-    const newValue =
-      !notifications;
+      const newValue =
+        !notifications;
 
-    // ENABLE
-    if (newValue) {
+      // ENABLE
 
-      const granted =
-        await RequestNotificationPermission();
+      if (newValue) {
 
-      if (!granted) {
+        const granted =
+          await RequestNotificationPermission();
 
-        alert(
-          "Notification permission denied"
+        if (!granted) {
+
+          alert(
+            "Notification permission denied"
+          );
+
+          return;
+        }
+
+        ShowNotification(
+
+          "Interview Alerts Enabled 🚀",
+
+          "You will now receive interview reminders."
+
         );
-
-        return;
       }
 
-      ShowNotification(
-        "Interview Alerts Enabled 🚀",
-        "You will now receive interview reminders."
-      );
-    }
-
-    setNotifications(
-      newValue
-    );
-
-    await SaveSettings({
-
-      notifications:
+      setNotifications(
         newValue
-          ? "enabled"
-          : "disabled",
-    });
-  };
+      );
+
+      await SaveSettings({
+
+        notifications:
+          newValue
+            ? "enabled"
+            : "disabled",
+      });
+    };
+
+  // =========================
   // AI FEEDBACK
+  // =========================
+
   const ToggleAiFeedback =
     async () => {
 
@@ -256,17 +246,18 @@ const SettingsPage = () => {
       });
     };
 
+  // =========================
   // LOADING
+  // =========================
+
   if (loading) {
 
     return (
 
-      <div
-        className="
-          text-white
-          p-10
-        "
-      >
+      <div className="
+        text-white
+        p-10
+      ">
 
         Loading Settings...
 
@@ -274,84 +265,77 @@ const SettingsPage = () => {
     );
   }
 
+  // =========================
+  // UI
+  // =========================
+
   return (
 
-    <div
-      className="
-        min-h-screen
-        bg-black
-        text-white
-        p-8
-      "
-    >
+    <div className="
+      min-h-screen
+      bg-black
+      text-white
+      p-8
+    ">
 
       {/* HEADER */}
+
       <div className="mb-10">
 
-        <h1
-          className="
-            text-4xl
-            font-bold
-          "
-        >
+        <h1 className="
+          text-4xl
+          font-bold
+        ">
 
           Settings
 
         </h1>
 
-        <p
-          className="
-            text-gray-400
-            mt-2
-          "
-        >
+        <p className="
+          text-gray-400
+          mt-2
+        ">
 
-          Manage your interview
-          preferences and
-          application settings.
+          Manage your interview preferences and application settings.
 
         </p>
 
       </div>
 
       {/* CONTAINER */}
-      <div
-      className="
-      w-full
-      max-w-6xl
-      mx-auto
-      "
-      >
 
-      <div className="space-y-8">
+      <div className="
+        w-full
+        max-w-6xl
+        mx-auto
+      ">
+
+        <div className="
+          space-y-8
+        ">
 
           {/* ACCOUNT */}
-          <div
-            className="
-              bg-[#111827]
-              border
-              border-gray-800
-              rounded-3xl
-              p-8
-            "
-          >
 
-            <div
-              className="
-                flex
-                items-center
-                gap-3
-                mb-8
-              "
-            >
+          <div className="
+            bg-[#111827]
+            border
+            border-gray-800
+            rounded-3xl
+            p-8
+          ">
 
-              <div
-                className="
-                  bg-blue-500/20
-                  p-3
-                  rounded-2xl
-                "
-              >
+            <div className="
+              flex
+              items-center
+              gap-3
+              mb-8
+            ">
+
+              <div className="
+                bg-blue-500/20
+                p-3
+                rounded-2xl
+              ">
 
                 <User
                   className="
@@ -363,23 +347,19 @@ const SettingsPage = () => {
 
               <div>
 
-                <h2
-                  className="
-                    text-2xl
-                    font-bold
-                  "
-                >
+                <h2 className="
+                  text-2xl
+                  font-bold
+                ">
 
                   Account Settings
 
                 </h2>
 
-                <p
-                  className="
-                    text-gray-400
-                    text-sm
-                  "
-                >
+                <p className="
+                  text-gray-400
+                  text-sm
+                ">
 
                   Manage your Clerk account
 
@@ -389,44 +369,34 @@ const SettingsPage = () => {
 
             </div>
 
-            <div
-              className="
-                w-full
-                flex
-                items-center
-                justify-between
-                bg-black/30
-                border
-                border-gray-700
-                rounded-2xl
-                p-5
-              "
-            >
+            <div className="
+              w-full
+              flex
+              items-center
+              justify-between
+              bg-black/30
+              border
+              border-gray-700
+              rounded-2xl
+              p-5
+            ">
 
-              <div
-                className="
-                  text-left
-                "
-              >
+              <div>
 
-                <h3
-                  className="
-                    font-semibold
-                    text-lg
-                  "
-                >
+                <h3 className="
+                  font-semibold
+                  text-lg
+                ">
 
                   Account Settings
 
                 </h3>
 
-                <p
-                  className="
-                    text-gray-400
-                    text-sm
-                    mt-1
-                  "
-                >
+                <p className="
+                  text-gray-400
+                  text-sm
+                  mt-1
+                ">
 
                   Manage profile,
                   email,
@@ -446,32 +416,27 @@ const SettingsPage = () => {
           </div>
 
           {/* INTERVIEW */}
-          <div
-            className="
-              bg-[#111827]
-              border
-              border-gray-800
-              rounded-3xl
-              p-8
-            "
-          >
 
-            <div
-              className="
-                flex
-                items-center
-                gap-3
-                mb-8
-              "
-            >
+          <div className="
+            bg-[#111827]
+            border
+            border-gray-800
+            rounded-3xl
+            p-8
+          ">
 
-              <div
-                className="
-                  bg-purple-500/20
-                  p-3
-                  rounded-2xl
-                "
-              >
+            <div className="
+              flex
+              items-center
+              gap-3
+              mb-8
+            ">
+
+              <div className="
+                bg-purple-500/20
+                p-3
+                rounded-2xl
+              ">
 
                 <Brain
                   className="
@@ -483,23 +448,19 @@ const SettingsPage = () => {
 
               <div>
 
-                <h2
-                  className="
-                    text-2xl
-                    font-bold
-                  "
-                >
+                <h2 className="
+                  text-2xl
+                  font-bold
+                ">
 
                   Interview Preferences
 
                 </h2>
 
-                <p
-                  className="
-                    text-gray-400
-                    text-sm
-                  "
-                >
+                <p className="
+                  text-gray-400
+                  text-sm
+                ">
 
                   AI interview behavior settings
 
@@ -509,31 +470,26 @@ const SettingsPage = () => {
 
             </div>
 
-            <div
-              className="
-                space-y-6
-              "
-            >
+            <div className="
+              space-y-6
+            ">
 
               {/* DIFFICULTY */}
+
               <div>
 
-                <label
-                  className="
-                    block
-                    mb-3
-                    font-medium
-                  "
-                >
+                <label className="
+                  block
+                  mb-3
+                  font-medium
+                ">
 
                   Interview Difficulty
 
                 </label>
 
                 <select
-                  value={
-                    difficulty
-                  }
+                  value={difficulty}
                   onChange={(e) =>
                     HandleDifficulty(
                       e.target.value
@@ -552,15 +508,21 @@ const SettingsPage = () => {
                 >
 
                   <option>
+
                     Beginner
+
                   </option>
 
                   <option>
+
                     Intermediate
+
                   </option>
 
                   <option>
+
                     Advanced
+
                   </option>
 
                 </select>
@@ -568,37 +530,32 @@ const SettingsPage = () => {
               </div>
 
               {/* AI FEEDBACK */}
-              <div
-                className="
-                  flex
-                  items-center
-                  justify-between
-                  bg-black/30
-                  border
-                  border-gray-700
-                  rounded-2xl
-                  p-5
-                "
-              >
+
+              <div className="
+                flex
+                items-center
+                justify-between
+                bg-black/30
+                border
+                border-gray-700
+                rounded-2xl
+                p-5
+              ">
 
                 <div>
 
-                  <h3
-                    className="
-                      font-semibold
-                    "
-                  >
+                  <h3 className="
+                    font-semibold
+                  ">
 
                     Detailed AI Feedback
 
                   </h3>
 
-                  <p
-                    className="
-                      text-gray-400
-                      text-sm
-                    "
-                  >
+                  <p className="
+                    text-gray-400
+                    text-sm
+                  ">
 
                     Enable advanced AI analysis
 
@@ -639,32 +596,27 @@ const SettingsPage = () => {
           </div>
 
           {/* NOTIFICATIONS */}
-          <div
-            className="
-              bg-[#111827]
-              border
-              border-gray-800
-              rounded-3xl
-              p-8
-            "
-          >
 
-            <div
-              className="
-                flex
-                items-center
-                gap-3
-                mb-8
-              "
-            >
+          <div className="
+            bg-[#111827]
+            border
+            border-gray-800
+            rounded-3xl
+            p-8
+          ">
 
-              <div
-                className="
-                  bg-yellow-500/20
-                  p-3
-                  rounded-2xl
-                "
-              >
+            <div className="
+              flex
+              items-center
+              gap-3
+              mb-8
+            ">
+
+              <div className="
+                bg-yellow-500/20
+                p-3
+                rounded-2xl
+              ">
 
                 <Bell
                   className="
@@ -676,12 +628,10 @@ const SettingsPage = () => {
 
               <div>
 
-                <h2
-                  className="
-                    text-2xl
-                    font-bold
-                  "
-                >
+                <h2 className="
+                  text-2xl
+                  font-bold
+                ">
 
                   Notifications
 
@@ -691,26 +641,22 @@ const SettingsPage = () => {
 
             </div>
 
-            <div
-              className="
-                flex
-                items-center
-                justify-between
-                bg-black/30
-                border
-                border-gray-700
-                rounded-2xl
-                p-5
-              "
-            >
+            <div className="
+              flex
+              items-center
+              justify-between
+              bg-black/30
+              border
+              border-gray-700
+              rounded-2xl
+              p-5
+            ">
 
               <div>
 
-                <h3
-                  className="
-                    font-semibold
-                  "
-                >
+                <h3 className="
+                  font-semibold
+                ">
 
                   Interview Alerts
 
