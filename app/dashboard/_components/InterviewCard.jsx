@@ -71,7 +71,7 @@ const InterviewCard = ({
 
         if (data.success) {
 
-          router.refresh();
+          window.location.reload();
 
         } else {
 

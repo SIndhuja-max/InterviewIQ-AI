@@ -406,24 +406,28 @@ console.log(
         // =========================
 
         alert(
-          "Interview Created Successfully 🚀"
-        );
+  "Interview Created Successfully 🚀"
+);
 
-        localStorage.removeItem(
-          "resumeText"
-        );
+localStorage.removeItem(
+  "resumeText"
+);
 
-        // RESET
+// RESET
 
-        setOpen(false);
+setOpen(false);
 
-        setJobPosition("");
+setJobPosition("");
 
-        setCompanyName("");
+setCompanyName("");
 
-        setJobDesc("");
+setJobDesc("");
 
-        setJobExperience("");
+setJobExperience("");
+
+// FORCE DASHBOARD REFRESH
+
+window.location.reload();
 
       } catch (error) {
 
