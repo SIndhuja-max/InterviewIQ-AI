@@ -1,8 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextResponse }
+from "next/server";
 
-import { db } from "@/utils/db";
+import { db }
+from "@/utils/db";
 
-import { MockInterview } from "@/utils/schema";
+import { MockInterview }
+from "@/utils/schema";
 
 export async function POST(req) {
 
@@ -11,70 +14,31 @@ export async function POST(req) {
     const body =
       await req.json();
 
-    const {
-      jsonMockResp,
-      jobPosition,
-      jobDesc,
-      jobExperience,
-      createdBy,
-    } = body;
+    // =========================
+    // NORMALIZE EMAIL
+    // =========================
 
-    // VALIDATIONS
+    const normalizedBody = {
 
-    if (
-      !jsonMockResp ||
-      !jobPosition ||
-      !jobDesc ||
-      !jobExperience ||
-      !createdBy
-    ) {
+      ...body,
 
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Missing required fields",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
+      createdBy:
+        body?.createdBy
+          ?.trim()
+          ?.toLowerCase(),
+    };
 
-    // Validate JSON format
-
-    try {
-
-      JSON.parse(
-        jsonMockResp
-      );
-
-    } catch {
-
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Invalid interview JSON format",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    // INSERT
+    console.log(
+      "CREATE INTERVIEW BODY:",
+      normalizedBody
+    );
 
     const result =
       await db
         .insert(MockInterview)
-        .values({
-          jsonMockResp,
-          jobPosition,
-          jobDesc,
-          jobExperience,
-          createdBy,
-        })
+        .values(
+          normalizedBody
+        )
         .returning({
           id:
             MockInterview.id,
@@ -82,13 +46,14 @@ export async function POST(req) {
 
     return NextResponse.json(
       {
+
         success: true,
 
         interviewId:
           result[0]?.id,
       },
       {
-        status: 201,
+        status: 200,
       }
     );
 
@@ -101,10 +66,11 @@ export async function POST(req) {
 
     return NextResponse.json(
       {
+
         success: false,
 
         message:
-          "Internal server error",
+          "Failed to create interview",
       },
       {
         status: 500,
