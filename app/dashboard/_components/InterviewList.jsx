@@ -3,6 +3,7 @@
 import React, {
   useEffect,
   useState,
+  useCallback,
 } from "react";
 
 import InterviewCard
@@ -31,6 +32,82 @@ const InterviewList = () => {
   // FETCH INTERVIEWS
   // =========================
 
+  const GetInterviewList =
+    useCallback(async () => {
+
+      try {
+
+        setLoading(true);
+
+        const email =
+          user
+            ?.primaryEmailAddress
+            ?.emailAddress
+            ?.trim()
+            ?.toLowerCase();
+
+        if (!email) {
+
+          setInterviewList([]);
+
+          return;
+        }
+
+        const response =
+          await fetch(
+
+            `/api/dashboard-data?email=${encodeURIComponent(email)}`,
+
+            {
+              method: "GET",
+
+              cache: "no-store",
+
+              headers: {
+                "Cache-Control":
+                  "no-cache",
+              },
+            }
+          );
+
+        const result =
+          await response.json();
+
+        console.log(
+          "FETCHED INTERVIEWS:",
+          result
+        );
+
+        const interviews =
+
+          Array.isArray(result)
+
+            ? result
+
+            : result?.interviews || [];
+
+        setInterviewList(interviews);
+
+      } catch (error) {
+
+        console.log(
+          "FETCH ERROR:",
+          error
+        );
+
+        setInterviewList([]);
+
+      } finally {
+
+        setLoading(false);
+      }
+
+    }, [user]);
+
+  // =========================
+  // INITIAL FETCH
+  // =========================
+
   useEffect(() => {
 
     if (user) {
@@ -38,89 +115,7 @@ const InterviewList = () => {
       GetInterviewList();
     }
 
-  }, [user]);
-
-  const GetInterviewList =
-  async () => {
-
-    try {
-
-      setLoading(true);
-
-      const email =
-        user
-          ?.primaryEmailAddress
-          ?.emailAddress
-          ?.trim()
-          ?.toLowerCase();
-
-      if (!email) {
-
-        setInterviewList([]);
-
-        return;
-      }
-
-      const response =
-        await fetch(
-
-          `/api/dashboard-data?email=${encodeURIComponent(email)}`,
-
-          {
-            cache: "no-store",
-          }
-        );
-
-      if (!response.ok) {
-
-        throw new Error(
-          "Failed to fetch interviews"
-        );
-      }
-
-      const result =
-        await response.json();
-
-      console.log(
-        "FETCHED INTERVIEWS:",
-        result
-      );
-
-      if (!result.success) {
-
-        throw new Error(
-
-          result?.message ||
-
-          "Interview fetch failed"
-        );
-      }
-
-      setInterviewList(
-
-        Array.isArray(
-          result?.interviews
-        )
-
-          ? result.interviews
-
-          : []
-      );
-
-    } catch (error) {
-
-      console.log(
-        "FETCH ERROR:",
-        error
-      );
-
-      setInterviewList([]);
-
-    } finally {
-
-      setLoading(false);
-    }
-  };
+  }, [user, GetInterviewList]);
 
   // =========================
   // LOADING
@@ -148,8 +143,6 @@ const InterviewList = () => {
   return (
 
     <div className="mt-10">
-
-      {/* HEADER */}
 
       <div
         className="
@@ -188,8 +181,6 @@ const InterviewList = () => {
         </div>
 
       </div>
-
-      {/* GRID */}
 
       {
         interviewList?.length > 0 ? (

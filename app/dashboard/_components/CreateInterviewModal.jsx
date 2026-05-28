@@ -415,6 +415,8 @@ localStorage.removeItem(
 
 // RESET
 
+window.location.reload();
+
 setOpen(false);
 
 setJobPosition("");
@@ -424,10 +426,6 @@ setCompanyName("");
 setJobDesc("");
 
 setJobExperience("");
-
-// FORCE DASHBOARD REFRESH
-
-window.location.reload();
 
       } catch (error) {
 
