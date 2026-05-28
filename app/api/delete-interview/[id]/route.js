@@ -1,7 +1,6 @@
 export const dynamic =
   "force-dynamic";
 
-
 import {
   auth,
   currentUser,
@@ -30,7 +29,7 @@ export async function DELETE(
     // =========================
 
     const { userId } =
-      await auth();
+      auth();
 
     if (!userId) {
 
@@ -49,7 +48,7 @@ export async function DELETE(
     }
 
     // =========================
-    // CURRENT USER
+    // GET CURRENT USER
     // =========================
 
     const user =
@@ -61,44 +60,13 @@ export async function DELETE(
         ?.trim()
         ?.toLowerCase();
 
-    if (!userEmail) {
-
-      return Response.json(
-        {
-
-          success: false,
-
-          message:
-            "User email not found",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    // =========================
-    // INTERVIEW ID
-    // =========================
+    console.log(
+      "DELETE USER EMAIL:",
+      userEmail
+    );
 
     const interviewId =
       Number(params.id);
-
-    if (!interviewId) {
-
-      return Response.json(
-        {
-
-          success: false,
-
-          message:
-            "Invalid interview ID",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
 
     // =========================
     // FIND INTERVIEW
@@ -133,6 +101,11 @@ export async function DELETE(
       );
     }
 
+    console.log(
+      "INTERVIEW OWNER:",
+      interview[0].createdBy
+    );
+
     // =========================
     // VERIFY OWNER
     // =========================
@@ -164,7 +137,7 @@ export async function DELETE(
     }
 
     // =========================
-    // DELETE USER ANSWERS
+    // DELETE ANSWERS
     // =========================
 
     await db
@@ -189,18 +162,10 @@ export async function DELETE(
         )
       );
 
-    console.log(
-      "INTERVIEW DELETED:",
-      interviewId
-    );
-
     return Response.json(
       {
 
         success: true,
-
-        message:
-          "Interview deleted successfully",
       },
       {
         status: 200,
@@ -210,7 +175,7 @@ export async function DELETE(
   } catch (error) {
 
     console.log(
-      "DELETE API ERROR:",
+      "DELETE ERROR:",
       error
     );
 
@@ -220,7 +185,7 @@ export async function DELETE(
         success: false,
 
         message:
-          "Failed to delete interview",
+          "Delete failed",
       },
       {
         status: 500,

@@ -1,16 +1,17 @@
 export const dynamic =
   "force-dynamic";
 
-import { NextResponse } from "next/server";
+import { NextResponse }
+from "next/server";
 
-import { db } from "@/utils/db";
+import { db }
+from "@/utils/db";
 
-import { MockInterview } from "@/utils/schema";
+import { MockInterview }
+from "@/utils/schema";
 
-import {
-  eq,
-  desc,
-} from "drizzle-orm";
+import { eq }
+from "drizzle-orm";
 
 export async function GET(req) {
 
@@ -20,27 +21,30 @@ export async function GET(req) {
       new URL(req.url);
 
     const email =
-      searchParams.get(
-        "email"
-      );
+      searchParams
+        .get("email")
+        ?.trim()
+        ?.toLowerCase();
 
-    // VALIDATION
+    console.log(
+      "FETCH EMAIL:",
+      email
+    );
 
     if (!email) {
 
       return NextResponse.json(
         {
+
           success: false,
-          message:
-            "Email is required",
+
+          interviews: [],
         },
         {
           status: 400,
         }
       );
     }
-
-    // FETCH INTERVIEWS
 
     const result =
       await db
@@ -51,16 +55,18 @@ export async function GET(req) {
             MockInterview.createdBy,
             email
           )
-        )
-        .orderBy(
-          desc(
-            MockInterview.createdAt
-          )
         );
+
+    console.log(
+      "FETCHED INTERVIEWS:",
+      result
+    );
 
     return NextResponse.json(
       {
+
         success: true,
+
         interviews: result,
       },
       {
@@ -77,9 +83,10 @@ export async function GET(req) {
 
     return NextResponse.json(
       {
+
         success: false,
-        message:
-          "Failed to fetch dashboard data",
+
+        interviews: [],
       },
       {
         status: 500,
