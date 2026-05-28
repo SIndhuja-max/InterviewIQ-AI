@@ -1,3 +1,7 @@
+export const dynamic =
+  "force-dynamic";
+
+
 import {
   auth,
   currentUser,
@@ -26,7 +30,7 @@ export async function DELETE(
     // =========================
 
     const { userId } =
-      auth();
+      await auth();
 
     if (!userId) {
 
