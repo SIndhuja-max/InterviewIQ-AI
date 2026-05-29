@@ -1,4 +1,5 @@
 const OpenRouterModel = async (prompt) => {
+  alert("OPENROUTER FILE EXECUTED");
 
   try {
 
