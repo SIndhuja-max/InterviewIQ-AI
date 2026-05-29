@@ -115,8 +115,6 @@ The platform evaluates user answers and provides ratings, ideal answers, and AI-
 - Authorization-based interview access
 - Secure API route handling
 
----
-
 ## 🤖 AI Interview Generation
 
 - AI-generated technical interview questions
@@ -125,16 +123,12 @@ The platform evaluates user answers and provides ratings, ideal answers, and AI-
 - Experience-level interview generation
 - Tech-stack based AI questions
 
----
-
 ## 📄 Resume Analysis
 
 - Resume PDF upload support
 - Automatic PDF text extraction
 - AI-based resume analysis
 - Resume-driven interview Questions and preparation
-
----
 
 ## 🎤 Interview Simulation
 
@@ -143,8 +137,6 @@ The platform evaluates user answers and provides ratings, ideal answers, and AI-
 - Real-time interview experience
 - Professional interview interface
 
----
-
 ## 🧠 AI Feedback & Evaluation
 
 - AI-generated feedback
@@ -152,8 +144,6 @@ The platform evaluates user answers and provides ratings, ideal answers, and AI-
 - Ideal answer suggestions
 - Performance improvement analysis
 - Confidence scoring
-
----
 
 ## 📊 Analytics System
 
@@ -167,7 +157,7 @@ The platform evaluates user answers and provides ratings, ideal answers, and AI-
 
 # 🛠️ Tech Stack
 
-# Frontend
+## Frontend
 
 - Next.js 14
 - React.js
@@ -175,56 +165,50 @@ The platform evaluates user answers and provides ratings, ideal answers, and AI-
 - Shadcn UI
 - Lucide React
 
----
-
-# Backend
+## Backend
 
 - Next.js API Routes
 - Server-side AI processing
 
----
-
-# Database
+## Database
 
 - Neon PostgreSQL
 - Drizzle ORM
 
----
-
-# Authentication
+## Authentication
 
 - Clerk Authentication
 
----
-
-# AI & Resume Processing
+## AI & Resume Processing
 
 - OpenRouter AI
 - AI-powered Interview Generation
 - AI Feedback Generation
 - PDF Parse
 
----
-
-# Deployment
+## Deployment
 
 - Vercel
-
----
 
 # 🧠 System Architecture
 
 ```text
 User
-   ↓
+ │
+ ▼
 Clerk Authentication
-   ↓
+ │
+ ▼
 Next.js Frontend
-   ↓
-OpenRouter AI Processing
-   ↓
-Neon PostgreSQL Database
-   ↓
+ │
+ ▼
+Next.js API Routes
+│
+├── OpenRouter AI
+│
+└── Neon PostgreSQL
+      │
+      ▼
 Analytics & Feedback Engine
 ```
 
@@ -236,8 +220,6 @@ Analytics & Feedback Engine
 
 Only authenticated users can access dashboard pages.
 
----
-
 ## ✅ Multi-User Isolation
 
 Each user can only:
@@ -246,13 +228,9 @@ Each user can only:
 - View their own feedback
 - Delete their own interview records
 
----
-
 ## ✅ Authorization Layer
 
 Interview routes validate ownership before allowing access.
-
----
 
 ## ✅ Environment Variable Protection
 
@@ -297,6 +275,29 @@ The project is fully deployed on:
 - OpenRouter AI
 
 ---
+# ⚙️ Installation & Setup
+## Clone Repository
+- git clone https://github.com/SIndhuja-max/InterviewIQ-AI.git
+- cd InterviewIQ-AI
+## Install Dependencies
+- npm install
+## Configure Environment Variables
+Create a .env.local file:
+
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+
+DRIZZLE_DB_URL=
+
+OPENROUTER_API_KEY=
+
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+## Run Development Server
+npm run dev
+
+### Open:
+
+http://localhost:3000
 
 # 📌 Future Improvements
 
@@ -306,6 +307,7 @@ The project is fully deployed on:
 - 📄 PDF Feedback Export
 - 🏆 Leaderboard System
 - 🔥 Interview Streak Tracking
+- 🌍 Multi-Language Support
 
 ---
 
@@ -316,6 +318,7 @@ The project is fully deployed on:
 | Authentication | ✅ Completed |
 | AI Interview Generation | ✅ Completed |
 | Resume Analysis | ✅ Completed |
+|AI Feedback System|✅ Completed |
 | Analytics Dashboard | ✅ Completed |
 | Multi-User Isolation | ✅ Completed |
 | Production Deployment | ✅ Completed |
@@ -338,3 +341,4 @@ InterviewIQ AI is not just a frontend UI project.
 It is a deployed AI-powered SaaS-style application implementing authentication, authorization, analytics, AI integration, database management, and user-specific secure architecture.
 
 ---
+⭐ If you found this project useful, consider giving it a star on GitHub!
