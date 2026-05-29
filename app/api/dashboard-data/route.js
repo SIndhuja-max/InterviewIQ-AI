@@ -13,9 +13,8 @@ export async function GET() {
       .from(MockInterview);
 
   return NextResponse.json({
-    buildCheck: "VERSION_999",
-    rowCount: allRows.length,
-    rows: allRows.map(x => x.id),
-    timestamp: new Date().toISOString()
-  });
+  buildCheck: "VERSION_1000",
+  dbUrlEnd:
+    process.env.DRIZZLE_DB_URL?.slice(-80),
+});
 }
