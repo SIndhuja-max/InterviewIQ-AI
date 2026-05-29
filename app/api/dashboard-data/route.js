@@ -1,4 +1,3 @@
-
 export const dynamic =
   "force-dynamic";
 
@@ -11,49 +10,30 @@ from "@/utils/db";
 import { MockInterview }
 from "@/utils/schema";
 
-export async function GET(req) {
+export async function GET() {
 
   try {
-
-    const { searchParams } =
-      new URL(req.url);
-
-    const email =
-      searchParams
-        .get("email")
-        ?.trim()
-        ?.toLowerCase();
-
-    if (!email) {
-
-      return NextResponse.json(
-        {
-          success: false,
-          interviews: [],
-        },
-        {
-          status: 400,
-        }
-      );
-    }
 
     const allRows =
       await db
         .select()
         .from(MockInterview);
 
-    const interviews =
-      allRows.filter(
-        (item) =>
-          item?.createdBy
-            ?.trim()
-            ?.toLowerCase() === email
-      );
-
     return NextResponse.json(
       {
         success: true,
-        interviews,
+
+        dbRows: allRows.map(
+          (item) => ({
+            id: item.id,
+            createdBy:
+              item.createdBy,
+            jobPosition:
+              item.jobPosition,
+            createdAt:
+              item.createdAt,
+          })
+        ),
       },
       {
         status: 200,
@@ -70,7 +50,7 @@ export async function GET(req) {
     return NextResponse.json(
       {
         success: false,
-        interviews: [],
+        dbRows: [],
       },
       {
         status: 500,
