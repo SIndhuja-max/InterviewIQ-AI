@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, {
@@ -24,13 +25,12 @@ const FeedbackPage = () => {
     setLoading,
   ] = useState(true);
 
-  // =========================
-  // FETCH FEEDBACKS
-  // =========================
-
   useEffect(() => {
 
-    if (user) {
+    if (
+      user?.primaryEmailAddress
+        ?.emailAddress
+    ) {
 
       GetAllFeedback();
     }
@@ -42,11 +42,29 @@ const FeedbackPage = () => {
 
       try {
 
+        const email =
+          user?.primaryEmailAddress
+            ?.emailAddress
+            ?.trim()
+            ?.toLowerCase();
+
+        console.log(
+          "USER EMAIL:",
+          email
+        );
+
         const response =
           await fetch(
 
-            `/api/all-feedback?email=${user?.primaryEmailAddress?.emailAddress}`
+            `/api/all-feedback?email=${encodeURIComponent(email)}`,
 
+            {
+              cache: "no-store",
+              headers: {
+                "Cache-Control":
+                  "no-cache",
+              },
+            }
           );
 
         const result =
@@ -57,8 +75,15 @@ const FeedbackPage = () => {
           result
         );
 
+        console.log(
+          "FEEDBACK COUNT:",
+          result?.length
+        );
+
         setFeedbacks(
-          result
+          Array.isArray(result)
+            ? result
+            : []
         );
 
       } catch (error) {
@@ -67,14 +92,12 @@ const FeedbackPage = () => {
           "Feedback Fetch Error:",
           error
         );
+
+        setFeedbacks([]);
       }
 
       setLoading(false);
     };
-
-  // =========================
-  // LOADING
-  // =========================
 
   if (loading) {
 
@@ -90,10 +113,6 @@ const FeedbackPage = () => {
       </div>
     );
   }
-
-  // =========================
-  // UI
-  // =========================
 
   return (
 
@@ -127,7 +146,10 @@ const FeedbackPage = () => {
               ) => (
 
                 <div
-                  key={index}
+                  key={
+                    item.id ||
+                    index
+                  }
                   className="
                     bg-[#111827]
                     border
@@ -136,8 +158,6 @@ const FeedbackPage = () => {
                     p-6
                   "
                 >
-
-                  {/* TOP */}
 
                   <div className="
                     flex
@@ -169,13 +189,9 @@ const FeedbackPage = () => {
 
                   </div>
 
-                  {/* CONTENT */}
-
                   <div className="
                     space-y-4
                   ">
-
-                    {/* ANSWER */}
 
                     <div>
 
@@ -198,8 +214,6 @@ const FeedbackPage = () => {
                       </p>
 
                     </div>
-
-                    {/* FEEDBACK */}
 
                     <div>
 
@@ -269,3 +283,4 @@ const FeedbackPage = () => {
 };
 
 export default FeedbackPage;
+

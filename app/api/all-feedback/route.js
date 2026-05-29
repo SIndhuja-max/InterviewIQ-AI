@@ -12,6 +12,9 @@ import {
   desc,
 } from "drizzle-orm";
 
+export const dynamic =
+  "force-dynamic";
+
 export async function GET(req) {
 
   try {
@@ -20,9 +23,15 @@ export async function GET(req) {
       new URL(req.url);
 
     const email =
-      searchParams.get(
-        "email"
-      );
+      searchParams
+        .get("email")
+        ?.trim()
+        ?.toLowerCase();
+
+    console.log(
+      "ALL FEEDBACK EMAIL:",
+      email
+    );
 
     const result =
       await db
@@ -38,8 +47,19 @@ export async function GET(req) {
           desc(UserAnswer.id)
         );
 
+    console.log(
+      "ALL FEEDBACK COUNT:",
+      result.length
+    );
+
     return NextResponse.json(
-      result
+      result,
+      {
+        headers: {
+          "Cache-Control":
+            "no-store",
+        },
+      }
     );
 
   } catch (error) {
