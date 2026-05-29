@@ -39,6 +39,11 @@ export async function POST(req) {
     const data =
       await response.json();
 
+      console.log(
+  "OPENROUTER SERVER RESPONSE:",
+  JSON.stringify(data)
+);
+
     return NextResponse.json({
       success: true,
       data,

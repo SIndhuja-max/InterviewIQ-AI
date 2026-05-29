@@ -317,10 +317,20 @@ Format:
 const result =
   await response.json();
 
+  console.log(
+  "GENERATE API RESULT:",
+  result
+);
+
 let aiFeedback =
   result?.data
     ?.choices?.[0]
     ?.message?.content;
+
+    console.log(
+  "AI FEEDBACK:",
+  aiFeedback
+);
 
       console.log(
         "OPENROUTER RESPONSE RECEIVED"
