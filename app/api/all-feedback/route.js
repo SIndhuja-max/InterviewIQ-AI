@@ -15,6 +15,9 @@ import {
 export const dynamic =
   "force-dynamic";
 
+   export const revalidate =
+  0;
+
 export async function GET(req) {
 
   try {
@@ -57,7 +60,7 @@ export async function GET(req) {
       {
         headers: {
           "Cache-Control":
-            "no-store",
+            "no-store, no-cache, must-revalidate",
         },
       }
     );
