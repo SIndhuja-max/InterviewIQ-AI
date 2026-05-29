@@ -1,5 +1,5 @@
 const OpenRouterModel = async (prompt) => {
-  alert(
+  console.log(
   "KEY VALUE: " +
   String(process.env.OPENROUTER_API_KEY)
 );
