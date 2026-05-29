@@ -75,11 +75,18 @@ const Feedback = () => {
           result
         );
 
-        setFeedbackList(
-          Array.isArray(result)
-            ? result
-            : []
-        );
+        console.log(
+  "FEEDBACK COUNT:",
+  result?.feedback?.length
+);
+
+       setFeedbackList(
+  Array.isArray(
+    result?.feedback
+  )
+    ? result.feedback
+    : []
+);
 
       } catch (error) {
 
