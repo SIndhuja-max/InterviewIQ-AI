@@ -114,46 +114,34 @@ const RecordAnswerSection = ({
 
         if (isRecording) {
 
-          stopSpeechToText();
+  stopSpeechToText();
 
-          recognitionLock.current =
-            false;
+  recognitionLock.current =
+    false;
 
-          const finalTranscript =
-            results
-              .map(
-                (result) =>
-                  result.transcript
-              )
-              .join(" ");
+  console.log(
+    "FINAL TRANSCRIPT:",
+    userAnswer
+  );
 
-          console.log(
-            "FINAL TRANSCRIPT:",
-            finalTranscript
-          );
+  if (
+    !userAnswer ||
+    userAnswer.trim().length < 10
+  ) {
 
-          if (
-            finalTranscript
-              .trim()
-              .length < 10
-          ) {
+    toast(
+      "Please record a longer answer"
+    );
 
-            toast(
-              "Please record a longer answer"
-            );
+    return;
+  }
 
-            return;
-          }
+  await GenerateFeedback(
+    userAnswer
+  );
+}
 
-          setUserAnswer(
-            finalTranscript
-          );
-
-          await GenerateFeedback(
-            finalTranscript
-          );
-        }
-
+        
         // =====================
         // START RECORDING
         // =====================
