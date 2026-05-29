@@ -189,6 +189,11 @@ const RecordAnswerSection = ({
   const GenerateFeedback =
   async (finalAnswer) => {
 
+    console.log(
+    "GenerateFeedback CALLED",
+    finalAnswer
+  );
+
     try {
 
       setLoading(true);
