@@ -51,18 +51,26 @@ export async function GET(req) {
       );
     }
 
-    const result =
+    const allRows =
   await db
     .select()
     .from(MockInterview);
 
+const result =
+  allRows.filter(
+    item =>
+      item.createdBy
+        ?.trim()
+        ?.toLowerCase() ===
+      email
+        ?.trim()
+        ?.toLowerCase()
+  );
+
 console.log(
-  "ALL INTERVIEW IDS:",
+  "FILTERED IDS:",
   result.map(
-    item => ({
-      id: item.id,
-      createdBy: item.createdBy,
-    })
+    item => item.id
   )
 );
 
