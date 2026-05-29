@@ -57,6 +57,23 @@ export async function GET(req) {
           )
         );
 
+        console.log(
+  "INTERVIEW COUNT:",
+  result.length
+);
+
+console.log(
+  "INTERVIEW IDS:",
+  result.map(
+    item => item.id
+  )
+);
+
+console.log(
+  "FULL RESULT:",
+  JSON.stringify(result)
+);
+
     console.log(
       "FETCHED INTERVIEWS:",
       result
