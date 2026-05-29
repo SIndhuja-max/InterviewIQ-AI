@@ -52,15 +52,19 @@ export async function GET(req) {
     }
 
     const result =
-      await db
-        .select()
-        .from(MockInterview)
-        .where(
-          eq(
-            MockInterview.createdBy,
-            email
-          )
-        );
+  await db
+    .select()
+    .from(MockInterview);
+
+console.log(
+  "ALL INTERVIEW IDS:",
+  result.map(
+    item => ({
+      id: item.id,
+      createdBy: item.createdBy,
+    })
+  )
+);
 
         console.log(
   "INTERVIEW COUNT:",
