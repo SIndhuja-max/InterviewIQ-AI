@@ -299,10 +299,31 @@ Format:
       // OPENROUTER CALL
       // =====================
 
-      let aiFeedback =
-        await OpenRouterModel(
-          feedbackPrompt
-        );
+      const response =
+  await fetch(
+    "/api/generate-feedback",
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type":
+          "application/json",
+      },
+
+      body: JSON.stringify({
+        prompt:
+          feedbackPrompt,
+      }),
+    }
+  );
+
+const result =
+  await response.json();
+
+let aiFeedback =
+  result?.data
+    ?.choices?.[0]
+    ?.message?.content;
 
       console.log(
         "OPENROUTER RESPONSE RECEIVED"
