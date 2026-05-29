@@ -1,6 +1,9 @@
 export const dynamic =
   "force-dynamic";
 
+  export const revalidate =
+  0;
+
 import { NextResponse }
 from "next/server";
 
@@ -71,6 +74,21 @@ export async function GET(req) {
     // RESPONSE
     // =========================
 
+    console.log(
+  "GET FEEDBACK mockIdRef:",
+  mockIdRef
+);
+
+console.log(
+  "GET FEEDBACK COUNT:",
+  result.length
+);
+
+console.log(
+  "GET FEEDBACK IDS:",
+  result.map(item => item.id)
+);
+
     return NextResponse.json(
       {
 
@@ -79,8 +97,11 @@ export async function GET(req) {
         feedback: result,
       },
       {
-        status: 200,
-      }
+        headers: {
+      "Cache-Control":
+        "no-store, no-cache, must-revalidate",
+      },
+    }
     );
 
   } catch (error) {
