@@ -87,6 +87,12 @@ const InterviewList = () => {
             : result?.interviews || [];
 
         setInterviewList(interviews);
+        console.log(
+  "STATE IDS:",
+  interviews.map(
+    item => item.id
+  )
+);
 
       } catch (error) {
 
