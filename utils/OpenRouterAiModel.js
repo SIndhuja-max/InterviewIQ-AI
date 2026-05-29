@@ -2,9 +2,8 @@ const OpenRouterModel = async (prompt) => {
 
   try {
 
-    console.log("AUTH HEADER:", `Bearer ${process.env.OPENROUTER_API_KEY}`);
-
-const response = await fetch(
+    const response = await fetch(
+      "https://openrouter.ai/api/v1/chat/completions",
       {
 
         method: "POST",
