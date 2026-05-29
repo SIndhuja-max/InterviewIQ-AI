@@ -110,6 +110,20 @@ export async function DELETE(
     // VERIFY OWNER
     // =========================
 
+     console.log(
+  "OWNER:",
+  JSON.stringify(
+    interview[0]?.createdBy
+  )
+);
+
+console.log(
+  "USER:",
+  JSON.stringify(
+    userEmail
+  )
+);
+
     if (
 
       interview[0]

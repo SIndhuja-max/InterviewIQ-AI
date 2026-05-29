@@ -68,7 +68,7 @@ const result =
   );
 
 console.log(
-  "FILTERED IDS:",
+  "INTERVIEW IDS:",
   result.map(
     item => item.id
   )
