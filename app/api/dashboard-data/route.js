@@ -68,22 +68,19 @@ const result =
   );
 
 console.log(
-  "INTERVIEW IDS:",
-  result.map(
-    item => item.id
-  )
-);
-
-        console.log(
-  "INTERVIEW COUNT:",
-  result.length
+  "REQUEST TIME:",
+  new Date().toISOString()
 );
 
 console.log(
-  "INTERVIEW IDS:",
+  "LIVE IDS:",
   result.map(
     item => item.id
   )
+);
+        console.log(
+  "INTERVIEW COUNT:",
+  result.length
 );
 
 console.log(
