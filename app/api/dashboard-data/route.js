@@ -1,3 +1,4 @@
+
 export const dynamic =
   "force-dynamic";
 
@@ -9,9 +10,6 @@ from "@/utils/db";
 
 import { MockInterview }
 from "@/utils/schema";
-
-import { eq }
-from "drizzle-orm";
 
 export async function GET(req) {
 
@@ -26,23 +24,11 @@ export async function GET(req) {
         ?.trim()
         ?.toLowerCase();
 
-    console.log(
-      "FETCH EMAIL:",
-      email
-    );
-
-    console.log(
-  "DB URL:",
-  process.env.DRIZZLE_DB_URL
-);
-
     if (!email) {
 
       return NextResponse.json(
         {
-
           success: false,
-
           interviews: [],
         },
         {
@@ -52,53 +38,22 @@ export async function GET(req) {
     }
 
     const allRows =
-  await db
-    .select()
-    .from(MockInterview);
+      await db
+        .select()
+        .from(MockInterview);
 
-const result =
-  allRows.filter(
-    item =>
-      item.createdBy
-        ?.trim()
-        ?.toLowerCase() ===
-      email
-        ?.trim()
-        ?.toLowerCase()
-  );
-
-console.log(
-  "REQUEST TIME:",
-  new Date().toISOString()
-);
-
-console.log(
-  "LIVE IDS:",
-  result.map(
-    item => item.id
-  )
-);
-        console.log(
-  "INTERVIEW COUNT:",
-  result.length
-);
-
-console.log(
-  "FULL RESULT:",
-  JSON.stringify(result)
-);
-
-    console.log(
-      "FETCHED INTERVIEWS:",
-      result
-    );
+    const interviews =
+      allRows.filter(
+        (item) =>
+          item?.createdBy
+            ?.trim()
+            ?.toLowerCase() === email
+      );
 
     return NextResponse.json(
       {
-
         success: true,
-
-        interviews: result,
+        interviews,
       },
       {
         status: 200,
@@ -114,9 +69,7 @@ console.log(
 
     return NextResponse.json(
       {
-
         success: false,
-
         interviews: [],
       },
       {
@@ -125,3 +78,4 @@ console.log(
     );
   }
 }
+
