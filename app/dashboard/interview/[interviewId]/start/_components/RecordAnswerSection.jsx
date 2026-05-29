@@ -26,9 +26,6 @@ import {
 import { toast }
 from "sonner";
 
-import OpenRouterModel
-from "@/utils/OpenRouterAiModel";
-
 import {
   useUser,
 } from "@clerk/nextjs";
@@ -499,7 +496,7 @@ let aiFeedback =
       // SAVE TO DATABASE
       // =====================
 
-      const response =
+      const saveResponse  =
         await fetch(
           "/api/save-feedback",
           {
@@ -517,8 +514,8 @@ let aiFeedback =
           }
         );
 
-      const data =
-        await response.json();
+     const data =
+  await saveResponse.json();
 
       console.log(
         "SAVE API RESPONSE:",
