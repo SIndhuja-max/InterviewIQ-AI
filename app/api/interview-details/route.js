@@ -1,3 +1,4 @@
+
 import { NextResponse }
 from "next/server";
 
@@ -18,10 +19,15 @@ export async function GET(req) {
       new URL(req.url);
 
     const id =
-      searchParams.get("id");
+      Number(
+        searchParams.get("id")
+      );
 
     const email =
-      searchParams.get("email");
+      searchParams
+        .get("email")
+        ?.trim()
+        ?.toLowerCase();
 
     const result =
       await db
@@ -30,31 +36,51 @@ export async function GET(req) {
         .where(
           eq(
             MockInterview.id,
-            Number(id)
+            id
           )
         );
 
     const interview =
       result.find(
         (item) =>
-          item.createdBy ===
+          item?.createdBy
+            ?.trim()
+            ?.toLowerCase() ===
           email
       );
 
     if (!interview) {
 
-      return NextResponse.json({
+      console.log(
+        "AUTH FAILED",
+        {
+          requestedEmail:
+            email,
+          dbEmail:
+            result?.[0]
+              ?.createdBy,
+        }
+      );
 
-        success: false,
-      });
+      return NextResponse.json(
+        {
+          success: false,
+        },
+        {
+          status: 403,
+        }
+      );
     }
 
-    return NextResponse.json({
-
-      success: true,
-
-      interview,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        interview,
+      },
+      {
+        status: 200,
+      }
+    );
 
   } catch (error) {
 
@@ -63,9 +89,14 @@ export async function GET(req) {
       error
     );
 
-    return NextResponse.json({
-
-      success: false,
-    });
+    return NextResponse.json(
+      {
+        success: false,
+      },
+      {
+        status: 500,
+      }
+    );
   }
 }
+
