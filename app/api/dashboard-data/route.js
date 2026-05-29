@@ -31,6 +31,11 @@ export async function GET(req) {
       email
     );
 
+    console.log(
+  "DB URL:",
+  process.env.DRIZZLE_DB_URL
+);
+
     if (!email) {
 
       return NextResponse.json(

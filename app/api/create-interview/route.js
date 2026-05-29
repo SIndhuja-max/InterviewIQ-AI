@@ -37,6 +37,11 @@ export async function POST(req) {
       normalizedBody
     );
 
+      console.log(
+      "CREATE DB URL:",
+      process.env.DRIZZLE_DB_URL
+    );
+
     const result =
       await db
         .insert(MockInterview)
